@@ -29,6 +29,7 @@ jobs:
           grep -q '^TERMUX_APP__PACKAGE_NAME="com.huatiencode"$' scripts/properties.sh
           bash -n packages/ncurses/build.sh
           bash -n packages/docbook-xml/build.sh
+          bash -n scripts/build-bootstraps.sh
       - name: Restore rebuilt packages
         uses: actions/cache/restore@v4
         with:

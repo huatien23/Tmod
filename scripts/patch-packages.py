@@ -47,4 +47,10 @@ for version, filename in (
     assert s.count(old) == 1, f'docbook source changed upstream: {filename}'
     s = s.replace(old, new)
 docbook.write_text(s)
-print('Patched package ID, optional foot terminfo, and DocBook mirror')
+
+bootstraps = root / 'scripts/build-bootstraps.sh'
+s = bootstraps.read_text()
+old = 'PACKAGES+=("bzip2")'
+assert s.count(old) == 1, 'bootstrap package list changed upstream'
+bootstraps.write_text(s.replace(old, 'PACKAGES+=("libbz2")'))
+print('Patched package ID, optional sources, and bootstrap package list')
