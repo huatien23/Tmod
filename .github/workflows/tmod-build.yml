@@ -24,9 +24,10 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
+          python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
           cd "$RUNNER_TEMP/termux-packages"
-          sed -i 's/^TERMUX_APP__PACKAGE_NAME="com.termux"$/TERMUX_APP__PACKAGE_NAME="com.huatiencode"/' scripts/properties.sh
           grep -q '^TERMUX_APP__PACKAGE_NAME="com.huatiencode"$' scripts/properties.sh
+          bash -n packages/ncurses/build.sh
           ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
           test -s bootstrap-aarch64.zip
       - name: Prepare Tmod package repository
