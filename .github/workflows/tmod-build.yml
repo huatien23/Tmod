@@ -19,7 +19,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Build bootstrap for com.huatiencode
+      - name: Prepare termux-packages for com.huatiencode
         shell: bash
         run: |
           set -euo pipefail
@@ -28,8 +28,26 @@ jobs:
           cd "$RUNNER_TEMP/termux-packages"
           grep -q '^TERMUX_APP__PACKAGE_NAME="com.huatiencode"$' scripts/properties.sh
           bash -n packages/ncurses/build.sh
+          bash -n packages/docbook-xml/build.sh
+      - name: Restore rebuilt packages
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}
+          restore-keys: tmod-debs-
+      - name: Build bootstrap for com.huatiencode
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/termux-packages"
           ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
           test -s bootstrap-aarch64.zip
+      - name: Cache rebuilt packages
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}
       - name: Prepare Tmod package repository
         shell: bash
         run: |

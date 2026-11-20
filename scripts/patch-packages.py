@@ -32,4 +32,19 @@ for line in lines:
     out.append(line)
 assert removed_sources == 3 and removed_terminfo and not skip_terminfo, 'ncurses recipe changed upstream'
 ncurses.write_text(''.join(out))
-print('Patched package ID and removed optional foot terminfo source')
+
+docbook = root / 'packages/docbook-xml/build.sh'
+s = docbook.read_text()
+for version, filename in (
+    ('4.1.2', 'docbkx412.zip'),
+    ('4.2', 'docbook-xml-4.2.zip'),
+    ('4.3', 'docbook-xml-4.3.zip'),
+    ('4.4', 'docbook-xml-4.4.zip'),
+    ('4.5', 'docbook-xml-4.5.zip'),
+):
+    old = f'https://archive.docbook.org/xml/{version}/{filename}'
+    new = f'https://bos.us.distfiles.macports.org/docbook-xml/{filename}'
+    assert s.count(old) == 1, f'docbook source changed upstream: {filename}'
+    s = s.replace(old, new)
+docbook.write_text(s)
+print('Patched package ID, optional foot terminfo, and DocBook mirror')
