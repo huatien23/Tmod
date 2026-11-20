@@ -6,4 +6,4 @@ The upstream Java namespace stays `com.termux` so existing component class names
 
 The workflow `.github/workflows/tmod-build.yml` builds an aarch64 bootstrap with `termux-packages` using the new prefix, then builds the APK on GitHub Actions. The build includes apt, Python, and pip in the bootstrap. Download the `Tmod-arm64` artifact from the successful workflow run.
 
-The bootstrap's packages are built for the new prefix. Official Termux package repositories contain binaries for `com.termux`; installing those packages into Tmod requires a separate rebuilt package repository. Until that repository exists, `pkg install` from official mirrors is unsupported. Keep this limitation visible when testing the app.
+The workflow publishes the rebuilt bootstrap packages as a small APT repository at `https://huatien23.github.io/Tmod/apt`. The bootstrap points to that repository. It supports only the packages built in the workflow; the full official Termux repository is not available for the new prefix. Additional packages require a rebuild and publication to this repository.
