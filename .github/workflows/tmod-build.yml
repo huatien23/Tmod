@@ -49,6 +49,10 @@ jobs:
           test -s output/bootstrap-aarch64.zip
           unzip -p output/bootstrap-aarch64.zip bin/termux-setup-storage | grep -F 'com.huatiencode.app.reload_style'
           unzip -p output/bootstrap-aarch64.zip bin/login | grep -F '/data/data/com.huatiencode/files/usr/bin/bash'
+          if unzip -p output/bootstrap-aarch64.zip var/lib/dpkg/status | grep -Eq '^Package: (dpkg-perl|dpkg-scanpackages)$'; then
+            echo 'Bootstrap includes repository-generation packages with missing dependencies' >&2
+            exit 1
+          fi
       - name: Cache rebuilt packages
         if: always()
         uses: actions/cache/save@v4

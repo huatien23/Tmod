@@ -80,5 +80,15 @@ new = '''\t\tif [[ -s "$TERMUX_BUILT_DEBS_DIRECTORY/bootstrap-${TERMUX_ARCH}.zip
 \t\tfi'''
 assert s.count(old) == 1, 'bootstrap build loop changed upstream'
 s = s.replace(old, new)
+old = '\t\tif [[ " ${EXTRACTED_PACKAGES[*]} " == *" $current_package_name "* ]]; then'
+new = '''\t\t# These repository-generation tools need clang, which is not shipped.
+\t\tif [[ "$current_package_name" == "dpkg-perl" || "$current_package_name" == "dpkg-scanpackages" ]]; then
+\t\t\techo "[*] Skipping build-only package '$deb'..."
+\t\t\tcontinue
+\t\tfi
+
+''' + old
+assert s.count(old) == 1, 'bootstrap package extraction changed upstream'
+s = s.replace(old, new)
 bootstraps.write_text(s)
 print('Patched package ID, optional sources, and bootstrap package list')
