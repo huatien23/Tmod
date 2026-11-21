@@ -42,9 +42,7 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/termux-packages"
           if test -d output; then chmod -R a+rwX output; fi
-          if ! test -s output/bootstrap-aarch64.zip; then
-            ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
-          fi
+          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
           test -s output/bootstrap-aarch64.zip
       - name: Cache rebuilt packages
         if: always()

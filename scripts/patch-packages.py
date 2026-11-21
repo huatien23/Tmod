@@ -48,6 +48,13 @@ for version, filename in (
     s = s.replace(old, new)
 docbook.write_text(s)
 
+termux_tools = root / 'packages/termux-tools/build.sh'
+s = termux_tools.read_text()
+old = 'termux_step_pre_configure() {\n\tautoreconf -vfi\n}'
+new = 'termux_step_pre_configure() {\n\texport TERMUX_APP_PACKAGE="$TERMUX_APP__PACKAGE_NAME"\n\tautoreconf -vfi\n}'
+assert s.count(old) == 1, 'termux-tools recipe changed upstream'
+termux_tools.write_text(s.replace(old, new))
+
 bootstraps = root / 'scripts/build-bootstraps.sh'
 s = bootstraps.read_text()
 old = 'PACKAGES+=("bzip2")'
@@ -56,5 +63,23 @@ s = s.replace(old, 'PACKAGES+=("libbz2")')
 old = 'mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" "$TERMUX_PACKAGES_DIRECTORY/"'
 assert s.count(old) == 1, 'bootstrap archive destination changed upstream'
 s = s.replace(old, 'mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" "$TERMUX_BUILT_DEBS_DIRECTORY/"')
+old = '''\t\tfor package_name in "${PACKAGES[@]}"; do
+\t\t\tset +e
+\t\t\tbuild_package "$TERMUX_ARCH" "$package_name" || return $?
+\t\t\tset -e
+\t\tdone'''
+new = '''\t\tif [[ -s "$TERMUX_BUILT_DEBS_DIRECTORY/bootstrap-${TERMUX_ARCH}.zip" ]]; then
+\t\t\t# Rebuild the fixed tools, then repackage the cached bootstrap.
+\t\t\tBUILD_PACKAGE_OPTIONS+=("-f")
+\t\t\tbuild_package "$TERMUX_ARCH" "termux-tools" || return $?
+\t\telse
+\t\t\tfor package_name in "${PACKAGES[@]}"; do
+\t\t\t\tset +e
+\t\t\t\tbuild_package "$TERMUX_ARCH" "$package_name" || return $?
+\t\t\t\tset -e
+\t\t\tdone
+\t\tfi'''
+assert s.count(old) == 1, 'bootstrap build loop changed upstream'
+s = s.replace(old, new)
 bootstraps.write_text(s)
 print('Patched package ID, optional sources, and bootstrap package list')
