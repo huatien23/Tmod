@@ -24,7 +24,6 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
-          chmod a+w "$RUNNER_TEMP/termux-packages"
           python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
           cd "$RUNNER_TEMP/termux-packages"
           grep -q '^TERMUX_APP__PACKAGE_NAME="com.huatiencode"$' scripts/properties.sh
@@ -43,8 +42,10 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/termux-packages"
           if test -d output; then chmod -R a+rwX output; fi
-          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
-          test -s bootstrap-aarch64.zip
+          if ! test -s output/bootstrap-aarch64.zip; then
+            ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
+          fi
+          test -s output/bootstrap-aarch64.zip
       - name: Cache rebuilt packages
         if: always()
         uses: actions/cache/save@v4
@@ -57,8 +58,8 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq dpkg-dev apt-utils
-          bash scripts/prepare-apt-repo.sh "$RUNNER_TEMP/termux-packages" "$RUNNER_TEMP/termux-packages/bootstrap-aarch64.zip" "$RUNNER_TEMP/tmod-site"
-          cp "$RUNNER_TEMP/termux-packages/bootstrap-aarch64.zip" app/src/main/cpp/bootstrap-aarch64.zip
+          bash scripts/prepare-apt-repo.sh "$RUNNER_TEMP/termux-packages" "$RUNNER_TEMP/termux-packages/output/bootstrap-aarch64.zip" "$RUNNER_TEMP/tmod-site"
+          cp "$RUNNER_TEMP/termux-packages/output/bootstrap-aarch64.zip" app/src/main/cpp/bootstrap-aarch64.zip
       - name: Upload Tmod package repository
         uses: actions/upload-pages-artifact@v4
         with:

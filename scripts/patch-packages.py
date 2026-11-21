@@ -52,5 +52,9 @@ bootstraps = root / 'scripts/build-bootstraps.sh'
 s = bootstraps.read_text()
 old = 'PACKAGES+=("bzip2")'
 assert s.count(old) == 1, 'bootstrap package list changed upstream'
-bootstraps.write_text(s.replace(old, 'PACKAGES+=("libbz2")'))
+s = s.replace(old, 'PACKAGES+=("libbz2")')
+old = 'mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" "$TERMUX_PACKAGES_DIRECTORY/"'
+assert s.count(old) == 1, 'bootstrap archive destination changed upstream'
+s = s.replace(old, 'mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" "$TERMUX_BUILT_DEBS_DIRECTORY/"')
+bootstraps.write_text(s)
 print('Patched package ID, optional sources, and bootstrap package list')
