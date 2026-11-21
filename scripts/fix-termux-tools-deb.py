@@ -35,18 +35,19 @@ with tempfile.TemporaryDirectory() as temp:
         if fixed != original:
             file.write_bytes(fixed)
             changed.append(file.name)
-    assert 'termux-setup-storage' in changed and 'login' in changed and 'preinst' in changed, changed
     setup = next(package.rglob('termux-setup-storage')).read_text()
     login = next(package.rglob('login')).read_text()
+    preinst = (package / 'DEBIAN' / 'preinst').read_text()
     assert '/data/data/com.huatiencode/files/home/storage' in setup
     assert '"com.huatiencode" > /dev/null' in setup
     assert '/data/data/com.huatiencode/files/usr/bin/bash' in login
+    assert '/data/data/com.huatiencode/files/usr/bin/bash' in preinst
     for name in ('preinst', 'postinst', 'prerm', 'postrm', 'config'):
         script = package / 'DEBIAN' / name
         if script.exists():
             script.chmod(0o755)
     replacement = Path(temp) / deb.name
-    subprocess.run(['dpkg-deb', '-b', str(package), str(replacement)], check=True)
+    subprocess.run(['dpkg-deb', '-Zxz', '-b', str(package), str(replacement)], check=True)
     shutil.copy2(replacement, deb)
 
 print('Fixed cached termux-tools:', ', '.join(changed))

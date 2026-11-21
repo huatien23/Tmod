@@ -47,6 +47,8 @@ jobs:
           if test -d output; then chmod -R a+rwX output; fi
           ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures aarch64 --add apt,python,python-pip
           test -s output/bootstrap-aarch64.zip
+          unzip -p output/bootstrap-aarch64.zip bin/termux-setup-storage | grep -F 'com.huatiencode.app.reload_style'
+          unzip -p output/bootstrap-aarch64.zip bin/login | grep -F '/data/data/com.huatiencode/files/usr/bin/bash'
       - name: Cache rebuilt packages
         if: always()
         uses: actions/cache/save@v4
