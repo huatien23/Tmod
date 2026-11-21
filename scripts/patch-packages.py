@@ -69,9 +69,8 @@ old = '''\t\tfor package_name in "${PACKAGES[@]}"; do
 \t\t\tset -e
 \t\tdone'''
 new = '''\t\tif [[ -s "$TERMUX_BUILT_DEBS_DIRECTORY/bootstrap-${TERMUX_ARCH}.zip" ]]; then
-\t\t\t# Rebuild the fixed tools, then repackage the cached bootstrap.
-\t\t\tBUILD_PACKAGE_OPTIONS+=("-f")
-\t\t\tbuild_package "$TERMUX_ARCH" "termux-tools" || return $?
+\t\t\t# Cached packages are patched before this script runs.
+\t\t\techo "[*] Repackaging cached bootstrap with fixed termux-tools"
 \t\telse
 \t\t\tfor package_name in "${PACKAGES[@]}"; do
 \t\t\t\tset +e

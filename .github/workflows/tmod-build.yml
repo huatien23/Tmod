@@ -36,6 +36,9 @@ jobs:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-debs-${{ github.run_id }}
           restore-keys: tmod-debs-
+      - name: Fix cached Termux tools
+        shell: bash
+        run: python3 scripts/fix-termux-tools-deb.py "$RUNNER_TEMP/termux-packages/output"
       - name: Build bootstrap for com.huatiencode
         shell: bash
         run: |
