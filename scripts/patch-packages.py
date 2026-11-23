@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Make termux-packages build for Tmod without optional foot terminfo."""
+"""Make termux-packages build and resolve dependencies for Tmod."""
 from pathlib import Path
+import json
 import sys
 
 root = Path(sys.argv[1])
@@ -9,6 +10,41 @@ s = props.read_text()
 old = 'TERMUX_APP__PACKAGE_NAME="com.termux"'
 assert s.count(old) == 1, 'termux-packages property changed upstream'
 props.write_text(s.replace(old, 'TERMUX_APP__PACKAGE_NAME="com.huatiencode"'))
+
+s = props.read_text()
+for old, new in (
+    ('TERMUX_REPO_APP__PACKAGE_NAME="com.termux"', 'TERMUX_REPO_APP__PACKAGE_NAME="com.huatiencode"'),
+    ('TERMUX_REPO_APP__DATA_DIR="/data/data/com.termux"', 'TERMUX_REPO_APP__DATA_DIR="/data/data/com.huatiencode"'),
+    ('TERMUX_REPO__CORE_DIR="/data/data/com.termux/termux/core"', 'TERMUX_REPO__CORE_DIR="/data/data/com.huatiencode/termux/core"'),
+    ('TERMUX_REPO__APPS_DIR="/data/data/com.termux/termux/app"', 'TERMUX_REPO__APPS_DIR="/data/data/com.huatiencode/termux/app"'),
+    ('TERMUX_REPO__ROOTFS="/data/data/com.termux/files"', 'TERMUX_REPO__ROOTFS="/data/data/com.huatiencode/files"'),
+    ('TERMUX_REPO__HOME="/data/data/com.termux/files/home"', 'TERMUX_REPO__HOME="/data/data/com.huatiencode/files/home"'),
+    ('TERMUX_REPO__PREFIX="/data/data/com.termux/files/usr"', 'TERMUX_REPO__PREFIX="/data/data/com.huatiencode/files/usr"'),
+):
+    assert s.count(old) == 1, f'repository property changed upstream: {old}'
+    s = s.replace(old, new)
+props.write_text(s)
+
+repo_json = root / 'repo.json'
+repos = json.loads(repo_json.read_text())
+assert repos['packages']['url'].startswith('https://'), 'main repository URL changed upstream'
+repos['packages']['url'] = 'https://huatien23.github.io/Tmod/apt'
+repo_json.write_text(json.dumps(repos, indent=2) + '\n')
+
+# The Tmod bootstrap repository is trusted by apt but does not publish a
+# Release.gpg file.  The build helper otherwise retries for several minutes
+# and fails before it can reuse the packages already published there.
+repo_helper = root / 'scripts/build/termux_get_repo_files.sh'
+s = repo_helper.read_text()
+old = '&& termux_download "${RELEASE_FILE_SIG_URL}" "${RELEASE_FILE}.gpg" SKIP_CHECKSUM; then'
+new = '''&& { [[ "${TERMUX_REPO_URL[$idx]}" == "https://huatien23.github.io/Tmod/apt" ]] ||
+                        termux_download "${RELEASE_FILE_SIG_URL}" "${RELEASE_FILE}.gpg" SKIP_CHECKSUM; }; then'''
+assert s.count(old) == 1, 'repository signature download changed upstream'
+s = s.replace(old, new)
+old = 'if ! gpg --verify "${RELEASE_FILE}.gpg" "${RELEASE_FILE}"; then'
+new = 'if [[ "${TERMUX_REPO_URL[$idx]}" != "https://huatien23.github.io/Tmod/apt" ]] && ! gpg --verify "${RELEASE_FILE}.gpg" "${RELEASE_FILE}"; then'
+assert s.count(old) == 1, 'repository signature check changed upstream'
+repo_helper.write_text(s.replace(old, new))
 
 ncurses = root / 'packages/ncurses/build.sh'
 lines = ncurses.read_text().splitlines(keepends=True)

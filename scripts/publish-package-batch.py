@@ -77,8 +77,19 @@ def release_for(shard):
             'draft': False,
             'prerelease': True,
         })
-    assets = {asset['name']: asset for asset in release['assets']}
+    assets = assets_for(release['id'])
     return release, assets
+
+
+def assets_for(release_id):
+    assets = {}
+    page = 1
+    while True:
+        batch = api(f'/releases/{release_id}/assets?per_page=100&page={page}')
+        assets.update((asset['name'], asset) for asset in batch)
+        if len(batch) < 100:
+            return assets
+        page += 1
 
 
 def stanzas(index):
@@ -129,13 +140,22 @@ def main():
     output = Path(sys.argv[1])
     with urllib.request.urlopen(PAGES_PACKAGES, timeout=30) as response:
         existing = stanzas(gzip.decompress(response.read()).decode())
+    shards = []
+    published = {Path(filename).name for filename in existing}
+    for shard_number in range(1000):
+        release = api(f'/releases/tags/tmod-main-{shard_number:03d}')
+        if release is None:
+            break
+        assets = assets_for(release['id'])
+        published.update(name for name in assets if name.endswith('.deb'))
+        shards.append((release, assets))
     candidates = [path for path in sorted(output.glob('*.deb'))
-                  if path.name not in existing and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
+                  if path.name not in published and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
     if not candidates:
         print('No new debs to publish')
         return
     print('New debs:', len(candidates))
-    shard = 0
+    shard = len(shards) - 1 if shards and len(shards[-1][1]) < 900 else len(shards)
     release, assets = release_for(shard)
     index = stanzas(urllib.request.urlopen(assets['Packages']['browser_download_url'], timeout=30).read().decode()) if 'Packages' in assets else {}
     changed = False
