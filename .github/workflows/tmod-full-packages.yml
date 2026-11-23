@@ -29,8 +29,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Prepare package recipes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
+          for attempt in 1 2 3 4 5; do
+            if git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/termux/termux-packages.git" "$RUNNER_TEMP/termux-packages"; then
+              break
+            fi
+            rm -rf "$RUNNER_TEMP/termux-packages"
+            sleep $((attempt * 10))
+          done
+          test -f "$RUNNER_TEMP/termux-packages/scripts/properties.sh"
           python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
       - uses: actions/cache/restore@v4
         with:
