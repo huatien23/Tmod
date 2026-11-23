@@ -1,0 +1,60 @@
+name: Build all Tmod arm64 packages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  enumerate:
+    runs-on: ubuntu-24.04
+    outputs:
+      batches: ${{ steps.recipes.outputs.batches }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: recipes
+        run: echo "batches=$(python3 scripts/recipe-batches.py)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: enumerate
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        packages: ${{ fromJson(needs.enumerate.outputs.batches) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare package recipes
+        run: |
+          git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
+          python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}-${{ strategy.job-index }}
+          restore-keys: tmod-debs-
+      - name: Build recipes
+        shell: bash
+        env:
+          PACKAGE_RECIPES: ${{ matrix.packages }}
+        run: |
+          cd "$RUNNER_TEMP/termux-packages"
+          if test -d output; then chmod -R a+rwX output; fi
+          failures=0
+          for recipe in $PACKAGE_RECIPES; do
+            if ! ./scripts/run-docker.sh ./build-package.sh -I --reuse-built-packages -a aarch64 "$recipe"; then
+              echo "Failed recipe: $recipe"
+              failures=$((failures + 1))
+            fi
+          done
+          echo "Batch finished with $failures failed recipes"
+      - name: Publish completed packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish-package-batch.py "$RUNNER_TEMP/termux-packages/output"
+      - uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}-${{ strategy.job-index }}
