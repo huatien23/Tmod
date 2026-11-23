@@ -1,0 +1,58 @@
+name: Build Tmod arm64 package batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: Space-separated Termux package recipes to build
+        required: true
+        default: git
+
+concurrency:
+  group: tmod-package-publisher
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare source recipes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
+          python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
+      - name: Restore previously built packages
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}
+          restore-keys: tmod-debs-
+      - name: Build selected arm64 packages
+        shell: bash
+        env:
+          PACKAGE_RECIPES: ${{ inputs.packages }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/termux-packages"
+          if test -d output; then chmod -R a+rwX output; fi
+          read -r -a recipes <<< "$PACKAGE_RECIPES"
+          for recipe in "${recipes[@]}"; do
+            [[ "$recipe" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || { echo "Invalid recipe: $recipe" >&2; exit 1; }
+            ./scripts/run-docker.sh ./build-package.sh -a aarch64 "$recipe"
+          done
+      - name: Publish new packages to GitHub Releases
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish-package-batch.py "$RUNNER_TEMP/termux-packages/output"
+      - name: Save package cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/termux-packages/output
+          key: tmod-debs-${{ github.run_id }}
