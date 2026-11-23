@@ -32,6 +32,7 @@ rm -rf "$tmp_dir/etc/apt/sources.list.d"
 printf '%s\n' 'deb [trusted=yes] https://huatien23.github.io/Tmod/apt stable main' > "$tmp_dir/etc/apt/sources.list"
 python3 - "$tmp_dir/etc/apt/sources.list" <<'PY'
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -39,7 +40,10 @@ import urllib.request
 releases = []
 for page in range(1, 20):
     url = f'https://api.github.com/repos/huatien23/Tmod/releases?per_page=100&page={page}'
-    request = urllib.request.Request(url, headers={'User-Agent': 'Tmod-bootstrap-builder'})
+    headers = {'User-Agent': 'Tmod-bootstrap-builder'}
+    if os.environ.get('GITHUB_TOKEN'):
+        headers['Authorization'] = 'Bearer ' + os.environ['GITHUB_TOKEN']
+    request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=30) as response:
         batch = json.load(response)
     releases.extend(batch)
