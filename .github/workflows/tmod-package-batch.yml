@@ -43,6 +43,13 @@ jobs:
           read -r -a recipes <<< "$PACKAGE_RECIPES"
           for recipe in "${recipes[@]}"; do
             [[ "$recipe" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || { echo "Invalid recipe: $recipe" >&2; exit 1; }
+            if [[ ! -f "packages/$recipe/build.sh" ]]; then
+              mapfile -t matches < <(find packages -mindepth 2 -maxdepth 2 -name "$recipe.subpackage.sh" -print)
+              ((${#matches[@]} == 1)) || { echo "Cannot resolve package recipe: $recipe" >&2; exit 1; }
+              recipe="${matches[0]#packages/}"
+              recipe="${recipe%%/*}"
+              echo "Building $recipe recipe for $PACKAGE_RECIPES"
+            fi
             ./scripts/run-docker.sh ./build-package.sh -I --reuse-built-packages -a aarch64 "$recipe"
           done
       - name: Publish new packages to GitHub Releases
