@@ -17,4 +17,4 @@ if tree.get('truncated'):
     raise RuntimeError('Termux recipe tree was truncated')
 recipes = sorted({entry['path'][9:-9] for entry in tree['tree']
                   if entry['path'].startswith('packages/') and entry['path'].endswith('/build.sh')})
-print(json.dumps([' '.join(recipes[i:i + 60]) for i in range(0, len(recipes), 60)]))
+print(json.dumps([' '.join(recipes[i:i + 10]) for i in range(0, len(recipes), 10)]))
