@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -34,14 +35,20 @@ def api(path, method='GET', payload=None):
     if body is not None:
         headers['Content-Type'] = 'application/json'
     request = urllib.request.Request(API + path, data=body, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            data = response.read()
-            return json.loads(data) if data else None
-    except urllib.error.HTTPError as error:
-        if error.code == 404 and method == 'GET':
-            return None
-        raise
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                data = response.read()
+                return json.loads(data) if data else None
+        except urllib.error.HTTPError as error:
+            if error.code == 404 and method == 'GET':
+                return None
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 4:
+                raise
+        except (TimeoutError, urllib.error.URLError):
+            if attempt == 4:
+                raise
+        time.sleep(5 * (attempt + 1))
 
 
 def upload_asset(release_id, name, data):
