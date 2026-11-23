@@ -30,6 +30,29 @@ unzip -q "$bootstrap" -d "$tmp_dir"
 mkdir -p "$tmp_dir/etc/apt"
 rm -rf "$tmp_dir/etc/apt/sources.list.d"
 printf '%s\n' 'deb [trusted=yes] https://huatien23.github.io/Tmod/apt stable main' > "$tmp_dir/etc/apt/sources.list"
+python3 - "$tmp_dir/etc/apt/sources.list" <<'PY'
+import json
+import re
+import sys
+import urllib.request
+
+url = 'https://api.github.com/repos/huatien23/Tmod/releases?per_page=100'
+request = urllib.request.Request(url, headers={'User-Agent': 'Tmod-bootstrap-builder'})
+with urllib.request.urlopen(request, timeout=30) as response:
+    releases = json.load(response)
+shards = []
+for release in releases:
+    tag = release['tag_name']
+    if not re.fullmatch(r'tmod-main-\d{3}', tag):
+        continue
+    assets = {asset['name'] for asset in release['assets']}
+    if {'Release', 'Packages', 'Packages.gz'} <= assets:
+        shards.append(tag)
+with open(sys.argv[1], 'a') as sources:
+    for tag in sorted(shards):
+        sources.write(f'deb [trusted=yes] https://github.com/huatien23/Tmod/releases/download/{tag}/ ./\n')
+print(f'Added {len(shards)} release shards to bootstrap apt sources')
+PY
 if [[ -f "$tmp_dir/SYMLINKS.txt" ]]; then
   sed -i '\@←./etc/apt/sources.list@d;\@←etc/apt/sources.list@d' "$tmp_dir/SYMLINKS.txt"
 fi

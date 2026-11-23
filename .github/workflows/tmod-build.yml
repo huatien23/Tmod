@@ -1,8 +1,6 @@
 name: Build Tmod arm64
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -34,8 +32,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/termux-packages/output
-          key: tmod-debs-${{ github.run_id }}
-          restore-keys: tmod-debs-
+          key: tmod-bootstrap-${{ github.run_id }}
+          restore-keys: |
+            tmod-bootstrap-
+            tmod-debs-45089517259
       - name: Fix cached Termux tools
         shell: bash
         run: python3 scripts/fix-termux-tools-deb.py "$RUNNER_TEMP/termux-packages/output"
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/termux-packages/output
-          key: tmod-debs-${{ github.run_id }}
+          key: tmod-bootstrap-${{ github.run_id }}
       - name: Prepare Tmod package repository
         shell: bash
         run: |
