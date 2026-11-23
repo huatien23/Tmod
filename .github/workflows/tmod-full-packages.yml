@@ -19,7 +19,7 @@ jobs:
     needs: enumerate
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 16
       matrix:
         packages: ${{ fromJson(needs.enumerate.outputs.batches) }}
     runs-on: ubuntu-24.04
