@@ -147,8 +147,18 @@ def main():
         if release is None:
             break
         assets = assets_for(release['id'])
-        published.update(name for name in assets if name.endswith('.deb'))
-        shards.append((release, assets))
+        index = stanzas(urllib.request.urlopen(assets['Packages']['browser_download_url'], timeout=30).read().decode()) if 'Packages' in assets else {}
+        repaired = False
+        for name in assets:
+            path = output / name
+            if name.endswith('.deb') and name not in index and path.is_file():
+                index[name] = package_stanza(path)
+                repaired = True
+        if repaired:
+            publish_index(release['id'], assets, index)
+            print(f'Repaired index for {release["tag_name"]}')
+        published.update(index)
+        shards.append((release, assets, index))
     candidates = [path for path in sorted(output.glob('*.deb'))
                   if path.name not in published and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
     if not candidates:
@@ -156,8 +166,11 @@ def main():
         return
     print('New debs:', len(candidates))
     shard = len(shards) - 1 if shards and len(shards[-1][1]) < 900 else len(shards)
-    release, assets = release_for(shard)
-    index = stanzas(urllib.request.urlopen(assets['Packages']['browser_download_url'], timeout=30).read().decode()) if 'Packages' in assets else {}
+    if shard < len(shards):
+        release, assets, index = shards[shard]
+    else:
+        release, assets = release_for(shard)
+        index = {}
     changed = False
     for path in candidates:
         if path.name in assets:
