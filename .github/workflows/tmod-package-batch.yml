@@ -43,7 +43,7 @@ jobs:
           read -r -a recipes <<< "$PACKAGE_RECIPES"
           for recipe in "${recipes[@]}"; do
             [[ "$recipe" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || { echo "Invalid recipe: $recipe" >&2; exit 1; }
-            ./scripts/run-docker.sh ./build-package.sh -I -a aarch64 "$recipe"
+            ./scripts/run-docker.sh ./build-package.sh -I --reuse-built-packages -a aarch64 "$recipe"
           done
       - name: Publish new packages to GitHub Releases
         if: always()
