@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - id: recipes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: echo "batches=$(python3 scripts/recipe-batches.py)" >> "$GITHUB_OUTPUT"
 
   build:
