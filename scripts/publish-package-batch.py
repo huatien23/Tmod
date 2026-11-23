@@ -20,6 +20,7 @@ REPO = 'Tmod'
 API = f'https://api.github.com/repos/{OWNER}/{REPO}'
 PAGES_PACKAGES = 'https://huatien23.github.io/Tmod/apt/dists/stable/main/binary-aarch64/Packages.gz'
 TOKEN = os.environ['GITHUB_TOKEN']
+RELEASE_PREFIX = os.environ.get('TMOD_RELEASE_PREFIX', 'tmod-main')
 HEADERS = {
     'Authorization': f'Bearer {TOKEN}',
     'Accept': 'application/vnd.github+json',
@@ -66,7 +67,7 @@ def upload_asset(release_id, name, data):
 
 
 def release_for(shard):
-    tag = f'tmod-main-{shard:03d}'
+    tag = f'{RELEASE_PREFIX}-{shard:03d}'
     release = api('/releases/tags/' + tag)
     if release is None:
         release = api('/releases', 'POST', {
@@ -143,7 +144,7 @@ def main():
     shards = []
     published = {Path(filename).name for filename in existing}
     for shard_number in range(1000):
-        release = api(f'/releases/tags/tmod-main-{shard_number:03d}')
+        release = api(f'/releases/tags/{RELEASE_PREFIX}-{shard_number:03d}')
         if release is None:
             break
         assets = assets_for(release['id'])
@@ -159,8 +160,10 @@ def main():
             print(f'Repaired index for {release["tag_name"]}')
         published.update(index)
         shards.append((release, assets, index))
+    baseline = set(Path(os.environ['TMOD_BASELINE_FILE']).read_text().splitlines()) if 'TMOD_BASELINE_FILE' in os.environ else set()
     candidates = [path for path in sorted(output.glob('*.deb'))
-                  if path.name not in published and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
+                  if path.name not in published and path.name not in baseline
+                  and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
     if not candidates:
         print('No new debs to publish')
         return

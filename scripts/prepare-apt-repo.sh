@@ -36,14 +36,19 @@ import re
 import sys
 import urllib.request
 
-url = 'https://api.github.com/repos/huatien23/Tmod/releases?per_page=100'
-request = urllib.request.Request(url, headers={'User-Agent': 'Tmod-bootstrap-builder'})
-with urllib.request.urlopen(request, timeout=30) as response:
-    releases = json.load(response)
+releases = []
+for page in range(1, 20):
+    url = f'https://api.github.com/repos/huatien23/Tmod/releases?per_page=100&page={page}'
+    request = urllib.request.Request(url, headers={'User-Agent': 'Tmod-bootstrap-builder'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        batch = json.load(response)
+    releases.extend(batch)
+    if len(batch) < 100:
+        break
 shards = []
 for release in releases:
     tag = release['tag_name']
-    if not re.fullmatch(r'tmod-main-\d{3}', tag):
+    if not re.fullmatch(r'tmod-(?:main|batch-\d+)-\d{3}', tag):
         continue
     assets = {asset['name'] for asset in release['assets']}
     if {'Release', 'Packages', 'Packages.gz'} <= assets:
