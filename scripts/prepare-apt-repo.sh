@@ -52,7 +52,7 @@ for page in range(1, 20):
 shards = []
 for release in releases:
     tag = release['tag_name']
-    if not re.fullmatch(r'tmod-(?:main|batch-\d+)-\d{3}', tag):
+    if not re.fullmatch(r'tmod-(?:main|batch-\d+|retry-\d+-\d+)-\d{3}', tag):
         continue
     assets = {asset['name'] for asset in release['assets']}
     if {'Release', 'Packages', 'Packages.gz'} <= assets:

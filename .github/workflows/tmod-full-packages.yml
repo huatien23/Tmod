@@ -2,6 +2,12 @@ name: Build all Tmod arm64 packages
 
 on:
   workflow_dispatch:
+    inputs:
+      selection:
+        description: Build all recipes or retry recipes missing from the published repository
+        type: choice
+        options: [all, missing]
+        default: all
 
 jobs:
   enumerate:
@@ -13,7 +19,13 @@ jobs:
       - id: recipes
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: echo "batches=$(python3 scripts/recipe-batches.py)" >> "$GITHUB_OUTPUT"
+          SELECTION: ${{ inputs.selection }}
+        run: |
+          if [[ "$SELECTION" == missing ]]; then
+            echo "batches=$(python3 scripts/recipe-batches.py --missing)" >> "$GITHUB_OUTPUT"
+          else
+            echo "batches=$(python3 scripts/recipe-batches.py)" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     needs: enumerate
@@ -66,7 +78,7 @@ jobs:
       - name: Publish completed packages
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          TMOD_RELEASE_PREFIX: tmod-batch-${{ strategy.job-index }}
+          TMOD_RELEASE_PREFIX: tmod-retry-${{ github.run_id }}-${{ strategy.job-index }}
           TMOD_BASELINE_FILE: ${{ runner.temp }}/tmod-baseline.txt
         run: python3 scripts/publish-package-batch.py "$RUNNER_TEMP/termux-packages/output"
       - uses: actions/cache/save@v4
