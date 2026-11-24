@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Dispatch another package build for recipes that failed in a completed run."""
 
+import io
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 TOKEN = os.environ['CONTINUE_TOKEN']
@@ -32,13 +35,65 @@ OPENER = urllib.request.build_opener(NoRedirect)
 def request(url, method='GET', payload=None, headers=None):
     data = None if payload is None else json.dumps(payload).encode()
     req = urllib.request.Request(url, data=data, headers=headers or HEADERS, method=method)
-    try:
-        with OPENER.open(req, timeout=120) as response:
-            return response.status, response.read()
-    except urllib.error.HTTPError as error:
-        if error.code in (301, 302, 303, 307, 308) and error.headers.get('Location'):
-            return error.code, error.headers.get('Location').encode()
-        raise
+    delay = 2
+    for attempt in range(5):
+        try:
+            with OPENER.open(req, timeout=120) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            if error.code in (301, 302, 303, 307, 308) and error.headers.get('Location'):
+                return error.code, error.headers.get('Location').encode()
+            if error.code in (502, 503, 504) and attempt < 4:
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+        except urllib.error.URLError:
+            if attempt < 4:
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+    raise RuntimeError(f'unreachable: {url}')
+
+
+def download_redirect(url):
+    code, location = request(url)
+    if code not in (301, 302, 303, 307, 308):
+        raise RuntimeError(f'{url} returned {code}')
+    delay = 2
+    last = None
+    for attempt in range(5):
+        try:
+            req = urllib.request.Request(location.decode(), headers={'User-Agent': 'tmod-continue'})
+            with urllib.request.urlopen(req, timeout=180) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            last = error
+            if error.code in (502, 503, 504) and attempt < 4:
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+    raise last
+
+
+def failed_from_artifacts():
+    status, body = request(f'{API}/repos/{REPO}/actions/runs/{RUN_ID}/artifacts?per_page=100')
+    if status != 200:
+        return set(), False
+    names = set()
+    found = False
+    for artifact in json.loads(body).get('artifacts', []):
+        if not artifact['name'].startswith('failed-recipes'):
+            continue
+        found = True
+        blob = download_redirect(artifact['archive_download_url'])
+        with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+            for info in archive.infolist():
+                text = archive.read(info).decode('utf-8', 'replace')
+                names.update(re.findall(r'(?m)^[A-Za-z0-9+._-]+$', text))
+    return names, found
 
 
 def failed_from_logs():
@@ -49,17 +104,16 @@ def failed_from_logs():
     for job in json.loads(body).get('jobs', []):
         if not job['name'].startswith('build'):
             continue
-        code, location = request(f"{API}/repos/{REPO}/actions/jobs/{job['id']}/logs")
-        if code not in (301, 302, 303, 307, 308):
-            print('log unavailable', job['id'], code)
+        try:
+            blob = download_redirect(f"{API}/repos/{REPO}/actions/jobs/{job['id']}/logs")
+        except urllib.error.HTTPError as error:
+            print('log unavailable', job['id'], error.code)
             continue
-        log_request = urllib.request.Request(location.decode(), headers={'User-Agent': 'tmod-continue'})
-        with urllib.request.urlopen(log_request, timeout=180) as response:
-            for raw in response:
-                line = re.sub(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s*', '', raw.decode('utf-8', 'replace').strip())
-                match = re.fullmatch(r'Failed recipe: ([A-Za-z0-9+._-]+)', line)
-                if match:
-                    names.add(match.group(1))
+        for raw in blob.splitlines():
+            line = re.sub(r'^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s*', '', raw.decode('utf-8', 'replace').strip())
+            match = re.fullmatch(r'Failed recipe: ([A-Za-z0-9+._-]+)', line)
+            if match:
+                names.add(match.group(1))
     return names
 
 
@@ -122,7 +176,8 @@ def dispatch_apk():
 
 
 def main():
-    failed = sorted(failed_from_logs())
+    failed_names, found_artifacts = failed_from_artifacts()
+    failed = sorted(failed_names if found_artifacts else failed_from_logs())
     print('failed', len(failed))
     if not failed:
         print('package batch has no failed recipes')
