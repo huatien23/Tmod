@@ -50,10 +50,22 @@
         tools:targetApi="m">
 
         <activity
-            android:name=".app.activities.TmodHomeActivity"
+            android:name=".app.activities.TmodEditorActivity"
+            android:exported="false"
+            android:label="@string/action_acode"
+            android:parentActivityName=".app.TermuxActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar" />
+
+        <activity
+            android:name=".app.TermuxActivity"
             android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
             android:label="@string/application_name"
-            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar">
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
+            tools:targetApi="n">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -69,24 +81,6 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
-
-        <activity
-            android:name=".app.activities.TmodEditorActivity"
-            android:exported="false"
-            android:label="@string/tmod_home_editor"
-            android:parentActivityName=".app.activities.TmodHomeActivity"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar" />
-
-        <activity
-            android:name=".app.TermuxActivity"
-            android:exported="true"
-            android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
-            android:label="@string/application_name"
-            android:launchMode="singleTask"
-            android:resizeableActivity="true"
-            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
-            tools:targetApi="n" />
 
         <activity-alias
             android:name=".HomeActivity"

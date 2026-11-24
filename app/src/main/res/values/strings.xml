@@ -14,9 +14,7 @@
 <resources>
 
     <string name="application_name">&TERMUX_APP_NAME;</string>
-    <string name="tmod_home_terminal">Terminal</string>
-    <string name="tmod_home_editor">Editor</string>
-    <string name="tmod_home_editor_detail">Sửa file trong home</string>
+    <string name="action_acode">Acode</string>
     <string name="tmod_editor_new">Tạo file</string>
     <string name="tmod_editor_save">Lưu</string>
     <string name="tmod_editor_saved">Đã lưu</string>
