@@ -94,6 +94,10 @@ termux_tmod_synthesize_libtool_archives() {
 	[[ -d "${TERMUX_PREFIX}/lib" ]] || return 0
 	local la so base name dir
 	while IFS= read -r la; do
+		if ! grep -q "^dlname=" "$la"; then
+			rm -f "$la"
+			continue
+		fi
 		sed -i "s/^dependency_libs=.*/dependency_libs=''/" "$la"
 	done < <(find "${TERMUX_PREFIX}/lib" -name '*.la' -type f)
 	# Prefer the linker name libfoo.so over a versioned soname.
@@ -102,7 +106,7 @@ termux_tmod_synthesize_libtool_archives() {
 		[[ "$base" == *.so ]] || continue
 		dir=$(dirname "$so")
 		la="${dir}/${base%.so}.la"
-		[[ -e "$la" ]] && continue
+		[[ -f "$la" ]] && grep -q "^dlname=" "$la" && continue
 		cat > "$la" << EOF
 # Synthesized by Tmod. The published package does not ship this archive.
 dlname='${base}'
