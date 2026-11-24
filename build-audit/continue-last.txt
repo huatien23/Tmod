@@ -1,4 +1,5 @@
 alpine
+alsa-plugins
 arpack-ng
 arturo
 asciinema
@@ -8,6 +9,14 @@ cabal-install
 cccc
 chicken
 ckermit
+deno
+etsh
+finch
+fish
+fortune
+gdal
+gforth
+git-annex
 git-cliff
 gobang
 hledger
@@ -20,7 +29,7 @@ libforestdb
 libgf2x
 libgmime
 libntl
-libv4l
+lilv
 lilypond
 llama-cpp
 lrzsz
