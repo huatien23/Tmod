@@ -1,5 +1,4 @@
 alpine
-alsa-plugins
 arpack-ng
 arturo
 asciinema
@@ -21,7 +20,6 @@ libforestdb
 libgf2x
 libgmime
 libntl
-libtatsu
 libv4l
 lilypond
 llama-cpp
