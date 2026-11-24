@@ -1,0 +1,22 @@
+name: Continue Tmod package builds
+
+on:
+  workflow_run:
+    workflows: ["Build all Tmod arm64 packages"]
+    types: [completed]
+
+jobs:
+  next:
+    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rebuild recipes that failed
+        env:
+          CONTINUE_TOKEN: ${{ secrets.CONTINUE_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/continue-packages.py

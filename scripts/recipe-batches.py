@@ -20,7 +20,9 @@ if tree.get('truncated'):
 available = {entry['path'][9:-9] for entry in tree['tree']
              if entry['path'].startswith('packages/') and entry['path'].endswith('/build.sh')}
 if len(sys.argv) > 1 and sys.argv[1] == '--missing':
-    recipes = sorted(set(Path('build-audit/missing-recipes.txt').read_text().splitlines()) & available)
+    recipes = sorted(set(Path('build-audit/missing-recipes.txt').read_text().split()) & available)
+elif len(sys.argv) > 2 and sys.argv[1] == '--file':
+    recipes = sorted(set(Path(sys.argv[2]).read_text().split()) & available)
 else:
     recipes = sorted(available)
 print(json.dumps([' '.join(recipes[i:i + 10]) for i in range(0, len(recipes), 10)]))

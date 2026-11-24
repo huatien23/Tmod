@@ -8,6 +8,11 @@ on:
         type: choice
         options: [all, missing]
         default: all
+      recipes:
+        description: Explicit recipe names. Used instead of selection when not empty.
+        required: false
+        type: string
+        default: ""
 
 jobs:
   enumerate:
@@ -20,8 +25,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SELECTION: ${{ inputs.selection }}
+          RECIPES: ${{ inputs.recipes }}
         run: |
-          if [[ "$SELECTION" == missing ]]; then
+          if [[ -n "$RECIPES" ]]; then
+            printf '%s\n' $RECIPES > "$RUNNER_TEMP/explicit-recipes.txt"
+            echo "batches=$(python3 scripts/recipe-batches.py --file "$RUNNER_TEMP/explicit-recipes.txt")" >> "$GITHUB_OUTPUT"
+          elif [[ "$SELECTION" == missing ]]; then
             echo "batches=$(python3 scripts/recipe-batches.py --missing)" >> "$GITHUB_OUTPUT"
           else
             echo "batches=$(python3 scripts/recipe-batches.py)" >> "$GITHUB_OUTPUT"
@@ -69,13 +78,22 @@ jobs:
           cd "$RUNNER_TEMP/termux-packages"
           if test -d output; then chmod -R a+rwX output; fi
           failures=0
+          : > "$RUNNER_TEMP/failed-recipes.txt"
           for recipe in $PACKAGE_RECIPES; do
             if ! ./scripts/run-docker.sh ./build-package.sh -I --reuse-built-packages -a aarch64 "$recipe"; then
               echo "Failed recipe: $recipe"
+              printf '%s\n' "$recipe" >> "$RUNNER_TEMP/failed-recipes.txt"
               failures=$((failures + 1))
             fi
           done
           echo "Batch finished with $failures failed recipes"
+      - name: Upload failed recipe names
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-recipes-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/failed-recipes.txt
+          if-no-files-found: ignore
       - name: Publish completed packages
         env:
           GITHUB_TOKEN: ${{ github.token }}
