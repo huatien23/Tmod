@@ -21,12 +21,6 @@ jobs:
         run: |
           mkdir -p app/src/main/cpp
           printf 'compile-only' > app/src/main/cpp/bootstrap-aarch64.zip
-      - name: Install Android SDK 37
-        run: |
-          set -euo pipefail
-          sdkmanager="$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}" -type f -name sdkmanager | head -n 1)"
-          yes | "$sdkmanager" --licenses >/dev/null || true
-          "$sdkmanager" "platforms;android-37"
       - name: Compile app Java sources
         env:
           TERMUX_SPLIT_APKS_FOR_DEBUG_BUILDS: '1'
