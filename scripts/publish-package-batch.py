@@ -169,8 +169,7 @@ def main():
         shards.append((release, assets, index))
     baseline = set(Path(os.environ['TMOD_BASELINE_FILE']).read_text().splitlines()) if 'TMOD_BASELINE_FILE' in os.environ else set()
     candidates = [path for path in sorted(output.glob('*.deb'))
-                  if path.name not in published and path.name not in baseline
-                  and not path.name.startswith(('dpkg-perl_', 'dpkg-scanpackages_'))]
+                  if path.name not in published and path.name not in baseline]
     if not candidates:
         print('No new debs to publish')
         return
