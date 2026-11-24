@@ -63,17 +63,28 @@ def failed_from_logs():
     return names
 
 
+def dispatch_apk():
+    status, body = request(
+        f'{API}/repos/{REPO}/actions/workflows/tmod-build.yml/dispatches',
+        'POST',
+        {'ref': 'main'},
+    )
+    print('apk', status, body[:80])
+    if status != 204:
+        raise SystemExit(f'apk dispatch returned {status}')
+
+
 def main():
     failed = sorted(failed_from_logs())
     print('failed', len(failed))
     if not failed:
         print('package batch has no failed recipes')
+        dispatch_apk()
         return
     previous = set(STATE.read_text().split()) if STATE.is_file() else set()
     if previous == set(failed):
         print('same failures as the last round, stopping')
-        for name in failed:
-            print(name)
+        dispatch_apk()
         return
     remote = 'https://x-access-token:${CONTINUE_TOKEN}@github.com/huatien23/Tmod.git'
     if os.system(f'git fetch "{remote}" main && git checkout -B main FETCH_HEAD') != 0:
