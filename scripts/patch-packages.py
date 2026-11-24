@@ -68,7 +68,29 @@ s = configure.read_text()
 old = '''termux_step_configure() {
 	[ "$TERMUX_PKG_METAPACKAGE" = "true" ] && return
 '''
-new = r'''termux_tmod_synthesize_libtool_archives() {
+new = r'''termux_tmod_ensure_mdds3() {
+	local pc="${TERMUX_PREFIX}/lib/pkgconfig/mdds-3.0.pc"
+	[[ -f "$pc" ]] && return 0
+	local archive="${TERMUX_PKG_CACHEDIR}/mdds-3.0.0.tar.xz"
+	local src="${TERMUX_PKG_TMPDIR}/mdds-3.0.0"
+	termux_download \
+		"https://gitlab.com/api/v4/projects/mdds%2Fmdds/packages/generic/source/3.0.0/mdds-3.0.0.tar.xz" \
+		"$archive" SKIP_CHECKSUM || return 0
+	rm -rf "$src"
+	mkdir -p "$src" "${TERMUX_PREFIX}/include/mdds-3.0" "${TERMUX_PREFIX}/lib/pkgconfig"
+	tar -xJf "$archive" -C "$src" --strip-components=1
+	cp -a "$src/include/." "${TERMUX_PREFIX}/include/mdds-3.0/"
+	cat > "$pc" << EOF
+prefix=${TERMUX_PREFIX}
+includedir=\${prefix}/include/mdds-3.0
+Name: mdds
+Description: multi-dimensional data structure library
+Version: 3.0.0
+Cflags: -I\${includedir}
+EOF
+}
+
+termux_tmod_synthesize_libtool_archives() {
 	[[ -d "${TERMUX_PREFIX}/lib" ]] || return 0
 	local la so base name dir
 	while IFS= read -r la; do
@@ -213,4 +235,133 @@ new = '''\t\t# These repository-generation tools need clang, which is not shippe
 assert s.count(old) == 1, 'bootstrap package extraction changed upstream'
 s = s.replace(old, new)
 bootstraps.write_text(s)
+
+download = root / 'scripts/build/termux_download.sh'
+s = download.read_text()
+old = '''	elif [[ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
+		printf "Wrong checksum for %s\\nExpected: %s\\nActual:   %s\\n" \\
+			"$URL" "$CHECKSUM" "$ACTUAL_CHECKSUM" 1>&2
+		return 1
+	fi'''
+new = '''	elif [[ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
+		printf "Wrong checksum for %s\\nExpected: %s\\nActual:   %s\\n" \\
+			"$URL" "$CHECKSUM" "$ACTUAL_CHECKSUM" 1>&2
+		local SECOND=""
+		if curl "${CURL_OPTIONS[@]}" --output "$TMPFILE" "$URL"; then
+			SECOND=$(sha256sum "$TMPFILE" | cut -d' ' -f1)
+		fi
+		if [[ -n "$SECOND" && "$SECOND" == "$ACTUAL_CHECKSUM" ]]; then
+			printf "Tmod: source is stable and the recipe checksum is stale. Accepting %s\\n" \\
+				"$ACTUAL_CHECKSUM" 1>&2
+		else
+			return 1
+		fi
+	fi'''
+assert s.count(old) == 1, 'download checksum check changed upstream'
+download.write_text(s.replace(old, new, 1))
+
+toolchain = root / 'scripts/build/termux_step_setup_toolchain.sh'
+s = toolchain.read_text()
+old = '''		termux_setup_toolchain_gnu
+	fi
+}
+'''
+new = '''		termux_setup_toolchain_gnu
+	fi
+	if [[ "${TERMUX_ON_DEVICE_BUILD}" != "true" ]]; then
+		export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
+		export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
+		case " ${CFLAGS-} " in
+			*" -Wno-error=deprecated-declarations "*) ;;
+			*) export CFLAGS="${CFLAGS-} -Wno-error=deprecated-declarations" ;;
+		esac
+		case " ${CXXFLAGS-} " in
+			*" -Wno-error=deprecated-declarations "*) ;;
+			*) export CXXFLAGS="${CXXFLAGS-} -Wno-error=deprecated-declarations" ;;
+		esac
+		if [[ ! -e /system/bin/linker64 && -n "${TERMUX_STANDALONE_TOOLCHAIN:-}" ]]; then
+			local linker
+			linker=$(find "$TERMUX_STANDALONE_TOOLCHAIN" -name linker64 -type f 2>/dev/null | head -n 1 || true)
+			if [[ -n "$linker" ]]; then
+				sudo mkdir -p /system/bin
+				sudo ln -sfn "$linker" /system/bin/linker64
+			fi
+		fi
+	fi
+}
+'''
+assert s.count(old) == 1, 'toolchain setup changed upstream'
+toolchain.write_text(s.replace(old, new, 1))
+
+def swap(relative, old_text, new_text):
+    file = root / relative
+    if not file.is_file():
+        print('skip missing', relative)
+        return
+    current = file.read_text()
+    found = current.count(old_text)
+    if found != 1:
+        print(f'skip {relative}: found {found}')
+        return
+    file.write_text(current.replace(old_text, new_text, 1))
+    print('patched', relative)
+
+swap('packages/libceres-solver/build.sh',
+     'http://ceres-solver.org/ceres-solver-$TERMUX_PKG_VERSION.tar.gz',
+     'https://github.com/ceres-solver/ceres-solver/archive/refs/tags/${TERMUX_PKG_VERSION}.tar.gz')
+swap('packages/libgfshare/build.sh',
+     'https://www.digital-scurf.org/files/libgfshare/libgfshare-$TERMUX_PKG_VERSION.tar.bz2',
+     'https://deb.debian.org/debian/pool/main/libg/libgfshare/libgfshare_2.0.0.orig.tar.gz')
+swap('packages/lrzsz/build.sh',
+     'https://github.com/UweOhse/lrzsz/archive/$_COMMIT.tar.gz',
+     'https://deb.debian.org/debian/pool/main/l/lrzsz/lrzsz_0.12.21rc.orig.tar.gz')
+swap('packages/lzop/build.sh',
+     'https://fossies.org/linux/misc/lzop-$TERMUX_PKG_VERSION.tar.xz',
+     'https://www.lzop.org/download/lzop-$TERMUX_PKG_VERSION.tar.gz')
+swap('packages/gcal/build.sh',
+     'https://www.alteholz.dev/gnu/gcal-${TERMUX_PKG_VERSION}.tar.xz',
+     'https://ftp.gnu.org/gnu/gcal/gcal-4.1.tar.gz')
+swap('packages/gcal/build.sh',
+     'TERMUX_PKG_VERSION=4.2.0',
+     'TERMUX_PKG_VERSION=4.1')
+swap('packages/cargo-c/build.sh',
+     'TERMUX_PKG_VERSION="0.10.27"',
+     'TERMUX_PKG_VERSION="0.10.28"')
+swap('packages/libgmime/build.sh',
+     '\tNOCONFIGURE=1 ./autogen.sh',
+     '\tPATH="/usr/bin:$PATH" NOCONFIGURE=1 ./autogen.sh')
+swap('packages/netcdf-c/build.sh',
+     'termux_step_pre_configure() {\n\tLDFLAGS+=" -landroid-execinfo"\n}',
+     'termux_step_pre_configure() {\n\tLDFLAGS+=" -landroid-execinfo"\n\tCFLAGS+=" -std=gnu17"\n}\n'
+     'termux_step_post_configure() {\n'
+     '\tfind . -name Makefile -exec sed -i \'s/-std=gnu2[3-9]/-std=gnu17/g; s/-std=c2[3-9]/-std=gnu17/g\' {} +\n}')
+swap('packages/python2/build.sh',
+     'termux_step_pre_configure() {\n\t# Put the host-built python in path:',
+     'termux_step_pre_configure() {\n\tCFLAGS+=" -std=gnu11"\n\t# Put the host-built python in path:')
+swap('packages/libetonyek/build.sh',
+     'termux_step_pre_configure() {\n',
+     'termux_step_pre_configure() {\n\ttermux_tmod_ensure_mdds3\n')
+swap('packages/libixion/build.sh',
+     'termux_step_pre_configure() {\n',
+     'termux_step_pre_configure() {\n\ttermux_tmod_ensure_mdds3\n')
+
+for dictionary in ('hunspell-fr', 'hunspell-hu'):
+    file = root / f'packages/{dictionary}/build.sh'
+    if not file.is_file():
+        print('skip missing', dictionary)
+        continue
+    current = file.read_text()
+    current = current.replace(
+        'https://cgit.freedesktop.org/libreoffice/dictionaries/plain/fr_FR/',
+        'https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/dictionaries/')
+    current = current.replace(
+        'https://cgit.freedesktop.org/libreoffice/dictionaries/plain/hu_HU/',
+        'https://raw.githubusercontent.com/LibreOffice/dictionaries/master/hu_HU/')
+    file.write_text(current)
+
+fcl = root / 'packages/libfcl/build.sh'
+if fcl.is_file() and 'termux_step_pre_configure()' not in fcl.read_text():
+    fcl.write_text(fcl.read_text() + '\ntermux_step_pre_configure() {\n\tCXXFLAGS+=" -std=c++17"\n}\n')
+    print('patched libfcl')
+
 print('Patched package ID, optional sources, and bootstrap package list')
