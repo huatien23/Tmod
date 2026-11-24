@@ -30,6 +30,8 @@ import java.util.List;
 /** Edits text files under the Tmod home directory. */
 public final class TmodEditorActivity extends AppCompatActivity {
 
+    public static final String EXTRA_PATH = "com.huatiencode.acode.PATH";
+
     private static final int MAX_BYTES = 1024 * 1024;
 
     private FrameLayout mContainer;
@@ -50,6 +52,18 @@ public final class TmodEditorActivity extends AppCompatActivity {
             return;
         }
         mDirectory = home;
+        String requested = getIntent().getStringExtra(EXTRA_PATH);
+        if (requested != null) {
+            File target = new File(requested);
+            if (target.isDirectory()) {
+                mDirectory = target;
+            } else if (target.isFile() && target.getParentFile() != null) {
+                mDirectory = target.getParentFile();
+                showDirectory();
+                openEntry(target);
+                return;
+            }
+        }
         showDirectory();
     }
 

@@ -66,6 +66,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
+import java.io.File;
 import java.util.Arrays;
 
 /**
@@ -250,6 +251,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setSettingsButtonView();
 
         setNewSessionButtonView();
+        setAcodeDrawer();
 
         setToggleKeyboardView();
 
@@ -581,6 +583,33 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 R.string.action_new_session_failsafe, text -> mTermuxTerminalSessionActivityClient.addNewSession(true, text),
                 -1, null, null);
             return true;
+        });
+    }
+
+    /** Right-edge swipe opens Acode. Left-edge swipe still opens sessions. */
+    private void setAcodeDrawer() {
+        ListView list = findViewById(R.id.acode_files_list);
+        File home = TermuxConstants.TERMUX_HOME_DIR;
+        if (!home.isDirectory()) home.mkdirs();
+        final File directory = home;
+        File[] children = directory.listFiles();
+        if (children == null) children = new File[0];
+        java.util.Arrays.sort(children, (a, b) -> {
+            if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
+            return a.getName().compareToIgnoreCase(b.getName());
+        });
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        java.util.List<File> files = new java.util.ArrayList<>();
+        for (File child : children) {
+            labels.add(child.isDirectory() ? child.getName() + "/" : child.getName());
+            files.add(child);
+        }
+        list.setAdapter(new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            Intent intent = new Intent(this, TmodEditorActivity.class);
+            intent.putExtra(TmodEditorActivity.EXTRA_PATH, files.get(position).getAbsolutePath());
+            ActivityUtils.startActivity(this, intent);
+            getDrawer().closeDrawer(android.view.Gravity.END);
         });
     }
 
