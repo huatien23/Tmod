@@ -63,7 +63,54 @@ def failed_from_logs():
     return names
 
 
+def package_names(blob):
+    import gzip
+    text = gzip.decompress(blob).decode('utf-8', 'replace')
+    return {line[9:].strip() for line in text.splitlines() if line.startswith('Package: ')}
+
+
+def repo_missing_count():
+    import gzip
+    status, blob = request('https://packages.termux.dev/apt/termux-main/dists/stable/main/binary-aarch64/Packages.gz', headers={'User-Agent': 'tmod-continue'})
+    if status != 200:
+        raise SystemExit(f'termux index returned {status}')
+    wanted = package_names(blob)
+    status, blob = request('https://huatien23.github.io/Tmod/apt/dists/stable/main/binary-aarch64/Packages.gz', headers={'User-Agent': 'tmod-continue'})
+    have = package_names(blob) if status == 200 else set()
+    page = 1
+    while page <= 8:
+        status, body = request(f'{API}/repos/{REPO}/releases?per_page=100&page={page}')
+        if status != 200:
+            break
+        releases = json.loads(body)
+        if not releases:
+            break
+        for rel in releases:
+            if not rel['tag_name'].startswith(('tmod-main-', 'tmod-batch-', 'tmod-retry-')):
+                continue
+            for asset in rel.get('assets') or []:
+                if asset['name'] not in ('Packages.gz', 'Packages'):
+                    continue
+                code, index = request(asset['browser_download_url'], headers={'User-Agent': 'tmod-continue'})
+                if code != 200:
+                    continue
+                raw = index
+                if asset['name'].endswith('.gz'):
+                    have |= package_names(raw)
+                else:
+                    have |= {line[9:].strip() for line in raw.decode('utf-8', 'replace').splitlines() if line.startswith('Package: ')}
+        if len(releases) < 100:
+            break
+        page += 1
+    missing = wanted - have
+    print('missing_packages', len(missing))
+    return len(missing)
+
+
 def dispatch_apk():
+    if repo_missing_count() != 0:
+        print('package repository is not complete, APK is not started')
+        return
     status, body = request(
         f'{API}/repos/{REPO}/actions/workflows/tmod-build.yml/dispatches',
         'POST',
