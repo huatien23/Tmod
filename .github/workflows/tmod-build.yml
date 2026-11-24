@@ -29,7 +29,7 @@ jobs:
           bash -n packages/docbook-xml/build.sh
           bash -n scripts/build-bootstraps.sh
       - name: Restore rebuilt packages
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-bootstrap-${{ github.run_id }}
@@ -55,7 +55,7 @@ jobs:
           fi
       - name: Cache rebuilt packages
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-bootstrap-${{ github.run_id }}
