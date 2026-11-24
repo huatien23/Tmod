@@ -33,7 +33,7 @@ def request(url, method='GET', payload=None, headers=None):
     data = None if payload is None else json.dumps(payload).encode()
     req = urllib.request.Request(url, data=data, headers=headers or HEADERS, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with OPENER.open(req, timeout=120) as response:
             return response.status, response.read()
     except urllib.error.HTTPError as error:
         if error.code in (301, 302, 303, 307, 308) and error.headers.get('Location'):
