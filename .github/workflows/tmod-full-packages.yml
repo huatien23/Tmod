@@ -89,7 +89,7 @@ jobs:
           echo "Batch finished with $failures failed recipes"
       - name: Upload failed recipe names
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failed-recipes-${{ strategy.job-index }}
           path: ${{ runner.temp }}/failed-recipes.txt
