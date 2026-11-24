@@ -46,6 +46,12 @@ new = 'if [[ "${TERMUX_REPO_URL[$idx]}" != "https://huatien23.github.io/Tmod/apt
 assert s.count(old) == 1, 'repository signature check changed upstream'
 repo_helper.write_text(s.replace(old, new))
 
+mpg123 = root / 'packages/libmpg123/build.sh'
+s = mpg123.read_text()
+old = 'TERMUX_PKG_BUILD_DEPENDS="pulseaudio"'
+assert s.count(old) == 1, 'libmpg123 optional audio dependency changed upstream'
+mpg123.write_text(s.replace(old, 'TERMUX_PKG_BUILD_DEPENDS=""'))
+
 # The main Pages repository contains only the bootstrap packages.  Extra
 # dependencies are downloaded directly from the rebuilt Release assets.
 downloader = root / 'scripts/build/termux_download_deb_pac.sh'
