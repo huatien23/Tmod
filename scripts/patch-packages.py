@@ -46,6 +46,30 @@ new = 'if [[ "${TERMUX_REPO_URL[$idx]}" != "https://huatien23.github.io/Tmod/apt
 assert s.count(old) == 1, 'repository signature check changed upstream'
 repo_helper.write_text(s.replace(old, new))
 
+# The main Pages repository contains only the bootstrap packages.  Extra
+# dependencies are downloaded directly from the rebuilt Release assets.
+downloader = root / 'scripts/build/termux_download_deb_pac.sh'
+s = downloader.read_text()
+old = '\t\t[[ ! -L "${cache_file}" ]] || rm -f "${cache_file}"'
+new = '''\t\tif [[ -f "$TERMUX_SCRIPTDIR/tmod-release-assets.json" ]]; then
+\t\t\tlocal release_url release_hash
+\t\t\tread -r release_url release_hash < <(python3 "$TERMUX_SCRIPTDIR/scripts/tmod-release-lookup.py" "$TERMUX_SCRIPTDIR/tmod-release-assets.json" "$PKG_FILE") || :
+\t\t\tif [[ -n "$release_url" ]]; then
+\t\t\t\ttermux_download "$release_url" "$cache_file" "$release_hash"
+\t\t\t\treturn $?
+\t\t\tfi
+\t\tfi
+''' + old
+assert s.count(old) == 1, 'dependency downloader changed upstream'
+downloader.write_text(s.replace(old, new))
+(root / 'scripts/tmod-release-lookup.py').write_text('''import json
+import sys
+with open(sys.argv[1]) as stream:
+    asset = json.load(stream).get(sys.argv[2])
+if asset:
+    print(*asset)
+''')
+
 ncurses = root / 'packages/ncurses/build.sh'
 lines = ncurses.read_text().splitlines(keepends=True)
 out = []

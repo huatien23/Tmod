@@ -22,10 +22,13 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare source recipes
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
           python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
+          python3 scripts/cache-release-assets.py "$RUNNER_TEMP/termux-packages"
       - name: Restore previously built packages
         uses: actions/cache/restore@v4
         with:
