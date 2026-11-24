@@ -52,6 +52,62 @@ old = 'TERMUX_PKG_BUILD_DEPENDS="pulseaudio"'
 assert s.count(old) == 1, 'libmpg123 optional audio dependency changed upstream'
 mpg123.write_text(s.replace(old, 'TERMUX_PKG_BUILD_DEPENDS=""'))
 
+# buildorder.py folds subpackage dependencies into the parent. mpg123's
+# runtime dependency on pulseaudio pulls libsndfile, which depends on
+# libmpg123, so the first build can never download a copy of itself.
+player = root / 'packages/libmpg123/mpg123.subpackage.sh'
+s = player.read_text()
+old = 'TERMUX_SUBPKG_DEPENDS="pulseaudio"'
+assert s.count(old) == 1, 'mpg123 subpackage dependency changed upstream'
+player.write_text(s.replace(old, 'TERMUX_SUBPKG_DEPENDS=""'))
+
+# Published debs do not ship libtool archives. Packages rebuilt from source
+# still ask libtool for files such as libX11.la.
+configure = root / 'scripts/build/configure/termux_step_configure.sh'
+s = configure.read_text()
+old = '''termux_step_configure() {
+	[ "$TERMUX_PKG_METAPACKAGE" = "true" ] && return
+'''
+new = r'''termux_tmod_synthesize_libtool_archives() {
+	[[ -d "${TERMUX_PREFIX}/lib" ]] || return 0
+	local la so base name dir
+	while IFS= read -r la; do
+		sed -i "s/^dependency_libs=.*/dependency_libs=''/" "$la"
+	done < <(find "${TERMUX_PREFIX}/lib" -name '*.la' -type f)
+	# Prefer the linker name libfoo.so over a versioned soname.
+	while IFS= read -r so; do
+		base=$(basename "$so")
+		[[ "$base" == *.so ]] || continue
+		dir=$(dirname "$so")
+		la="${dir}/${base%.so}.la"
+		[[ -e "$la" ]] && continue
+		cat > "$la" << EOF
+# Synthesized by Tmod. The published package does not ship this archive.
+dlname='${base}'
+library_names='${base}'
+old_library=''
+inherited_linker_flags=''
+dependency_libs=''
+weak_library_names=''
+current=0
+age=0
+revision=0
+installed=yes
+shouldnotlink=no
+dlopen=''
+dlpreopen=''
+libdir='${dir}'
+EOF
+	done < <(find "${TERMUX_PREFIX}/lib" -name 'lib*.so' \( -type f -o -type l \))
+}
+
+termux_step_configure() {
+	[ "$TERMUX_PKG_METAPACKAGE" = "true" ] && return
+	termux_tmod_synthesize_libtool_archives
+'''
+assert s.count(old) == 1, 'configure step changed upstream'
+configure.write_text(s.replace(old, new, 1))
+
 # The main Pages repository contains only the bootstrap packages.  Extra
 # dependencies are downloaded directly from the rebuilt Release assets.
 downloader = root / 'scripts/build/termux_download_deb_pac.sh'

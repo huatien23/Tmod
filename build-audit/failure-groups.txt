@@ -1,0 +1,60 @@
+Run 45373326658 completed jobs. Recipe failures, grouped.
+In progress at audit time: ckermit batch, swift batch, and the older run 45332429366.
+libmpg123 job 45391621459 failed: same self-cycle, no libmpg123 deb published.
+
+## cycle-libmpg123 (88)
+libtsduck libtwolame libvxl lilv libao libbcprov-java libbs2b libchromaprint libcommons-lang3-java jack-example-tools jadx jellyfin-server jftui jna jython kotlin ladspa-sdk pulseaudio python-torchaudio python-torchcodec python-torchvision qemu-system-x86-64-headless qrsspig navidrome ncpamixer ncspot notcurses openjdk-17 openjdk-21 openjdk-25 alass alsa-plugins ant apksigner apktool aubio ytui-music libmpg123 libopenmpt libsndfile bdsup2sub cava ccextractor groovy gst-libav gst-plugins-bad gst-python dcmtk dex2jar espeak gegl gomp gpac gradle ffmpeg ffmpegthumbnailer fluidsynth pcaudiolib pdftk pianobar pipewire plantuml procyon-decompiler vamp-plugin-sdk vgmstream vhs vlc snapcast-server sonarr sox speechd squeezelite srt2vobsub supercollider minidlna minimodem mp3gain mpd mpdscribble mplayer mpv radarr rsgain rubberband scala manim maven megacmd
+
+## checksum (15)
+libsrt libv4l icoutils inxi pass wallust libsearpc diff-so-fancy dte etsh frotz proton-drive-cli quilt renameutils seafile-client
+
+## libX11.la (13)
+libxcursor libxrandr openxr vulkan-validation-layers vulkan-volk fastfetch pipetto-crypto-vulkan-icd-wrapper virglrenderer vulkan-extension-layer vulkan-loader-generic vulkan-tools lwjgl2 mesa
+
+## src-download (10)
+libceres-solver libgfshare zssh cargo-c hunspell-fr hunspell-hu gcal fortune lrzsz lzop
+
+## qemu-linker64 (9)
+pypy pypy3 pandoc xmppc awscli cabal-install chicken deno sbcl
+
+## libtool-missing (5)
+libgmime mu muchsync neomutt notmuch
+
+## netcdf-c23 (5)
+netcdf-c gdal postgis monetdb mapserver
+
+## missing-mdds (4)
+libetonyek libixion libodfgen liborcus
+
+## missing-libmp3lame (3)
+python-lameenc libmp3lame gst-plugins-good
+
+## strtok-werror (3)
+liblo opensc distcc
+
+## flex-yyread (2)
+lilypond yosys
+
+## ldc-llvm (2)
+ldc sideloader
+
+## unversioned-triple (2)
+libforestdb mdbook-cat-prep
+
+## cc-for-build (2)
+libgf2x libntl
+
+## flang-pic (2)
+octave arpack-ng
+
+## libcurl-libzstd-pc (1)
+libtatsu
+
+## c23-false (1)
+python2
+
+## eigen-std (1)
+libfcl
+
+## other (24)
+netpbm onnxruntime openfoam alpine arturo asciinema zug biome2 cccc hledger hledger-ui hyperfine gforth git-annex git-cliff gobang finch fish vcsh smalltalk stag subtitleripper robotfindskitten llama-cpp
