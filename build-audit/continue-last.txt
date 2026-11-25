@@ -25,6 +25,7 @@ libforestdb
 libgf2x
 libgmime
 libntl
+libv4l
 lilypond
 llama-cpp
 lrzsz
