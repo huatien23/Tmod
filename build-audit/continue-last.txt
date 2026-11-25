@@ -1,5 +1,4 @@
 alpine
-alsa-plugins
 arpack-ng
 arturo
 asciinema
