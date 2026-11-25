@@ -2,12 +2,7 @@ alpine
 arpack-ng
 arturo
 asciinema
-awscli
-biome2
-cabal-install
-cccc
-chicken
-ckermit
+finch
 fish
 fortune
 gdal
@@ -25,7 +20,6 @@ libforestdb
 libgf2x
 libgmime
 libntl
-libv4l
 lilypond
 llama-cpp
 lrzsz
