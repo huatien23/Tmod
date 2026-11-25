@@ -281,16 +281,31 @@ new = '''		termux_setup_toolchain_gnu
 			*) export CFLAGS="${CFLAGS-} -Wno-error=deprecated-declarations" ;;
 		esac
 		case " ${CXXFLAGS-} " in
-			*" -Wno-error=deprecated-declarations "*) ;;
-			*) export CXXFLAGS="${CXXFLAGS-} -Wno-error=deprecated-declarations" ;;
+			*" -Wno-error "*) ;;
+			*) export CXXFLAGS="${CXXFLAGS-} -Wno-error -Wno-error=deprecated-declarations" ;;
 		esac
-		if [[ ! -e /system/bin/linker64 && -n "${TERMUX_STANDALONE_TOOLCHAIN:-}" ]]; then
-			local linker
-			linker=$(find "$TERMUX_STANDALONE_TOOLCHAIN" -name linker64 -type f 2>/dev/null | head -n 1 || true)
+		case " ${CFLAGS-} " in
+			*" -Wno-error "*) ;;
+			*) export CFLAGS="${CFLAGS-} -Wno-error" ;;
+		esac
+		local api="${TERMUX_PKG_API_LEVEL:-24}"
+		local wrap="$HOME/.tmod-cc-wrappers"
+		mkdir -p "$wrap"
+		printf '#!/bin/bash\nexec aarch64-linux-android%s-clang "$@"\n' "$api" > "$wrap/aarch64-linux-android-clang"
+		printf '#!/bin/bash\nexec aarch64-linux-android%s-clang++ "$@"\n' "$api" > "$wrap/aarch64-linux-android-clang++"
+		chmod 755 "$wrap/aarch64-linux-android-clang" "$wrap/aarch64-linux-android-clang++"
+		export PATH="$wrap:$PATH"
+		export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android${api}-clang"
+		if [[ ! -e /system/bin/linker64 ]]; then
+			local linker=""
+			linker=$(find "${TERMUX_STANDALONE_TOOLCHAIN:-/nonexistent}" "$HOME/.termux-build" /opt /usr -name linker64 -type f 2>/dev/null | head -n 1 || true)
 			if [[ -n "$linker" ]]; then
 				sudo mkdir -p /system/bin
 				sudo ln -sfn "$linker" /system/bin/linker64
 			fi
+		fi
+		if ! command -v automake-1.16 >/dev/null 2>&1; then
+			sudo apt-get update -qq && sudo apt-get install -y automake autoconf libtool >/dev/null
 		fi
 	fi
 }
