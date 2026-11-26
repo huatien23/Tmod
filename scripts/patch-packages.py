@@ -241,6 +241,12 @@ assert s.count(old) == 1, 'bootstrap package extraction changed upstream'
 s = s.replace(old, new)
 bootstraps.write_text(s)
 
+builder = root / 'build-package.sh'
+s = builder.read_text()
+old = 'termux_error_exit "Do not use \'sudo\' inside build scripts. Build environment should be configured through ./scripts/setup-ubuntu.sh."'
+assert s.count(old) == 1, 'sudo guard changed upstream'
+builder.write_text(s.replace(old, 'command sudo "$@"', 1))
+
 download = root / 'scripts/build/termux_download.sh'
 s = download.read_text()
 old = '''	elif [[ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
