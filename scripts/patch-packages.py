@@ -315,16 +315,16 @@ new = '''		termux_setup_toolchain_gnu
 		export GIT_TERMINAL_PROMPT=0
 		git config --global credential.helper "" || true
 		git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" || true
-		if [[ ! -e /system/bin/linker64 ]]; then
+		# /usr/bin/sudo in this image is sudo-rs. It panics in
+		# src/system/audit.rs while restoring the saved uid, which
+		# aborts the recipe after toolchain setup. Host packages are
+		# installed from the workflow as container uid 0 instead.
+		if [[ ! -e /system/bin/linker64 && -w /system/bin ]]; then
 			local linker=""
 			linker=$(find "${TERMUX_STANDALONE_TOOLCHAIN:-/nonexistent}" "$HOME/.termux-build" /opt /usr -name linker64 -type f 2>/dev/null | head -n 1 || true)
 			if [[ -n "$linker" ]]; then
-				sudo mkdir -p /system/bin
-				sudo ln -sfn "$linker" /system/bin/linker64
+				ln -sfn "$linker" /system/bin/linker64
 			fi
-		fi
-		if ! command -v automake-1.16 >/dev/null 2>&1; then
-			sudo apt-get update -qq && sudo apt-get install -y automake autoconf libtool >/dev/null
 		fi
 	fi
 }
@@ -364,6 +364,9 @@ swap('packages/fortune/build.sh',
      'http://dl.fefe.de/fortune-${TERMUX_PKG_VERSION}.tar.bz2',
      'https://deb.debian.org/debian/pool/main/f/fortune-mod/fortune-mod_1.99.1.orig.tar.gz')
 swap('packages/fortune/build.sh',
+     'TERMUX_PKG_SHA256=cbb246a500366db39ce035632eb4954e09f1e03b28f2c4688864bfa8661b236a',
+     'TERMUX_PKG_SHA256=fc51aee1f73c936c885f4e0f8b6b48f4f68103e3896eaddc6a45d2b71e14eace')
+swap('packages/fortune/build.sh',
      '''termux_step_make_install() {
 	cd $TERMUX_PKG_SRCDIR
 	$CC $CFLAGS $LDFLAGS fortune.c -o $TERMUX_PREFIX/bin/fortune
@@ -376,7 +379,15 @@ swap('packages/fortune/build.sh',
 		$TARFILE \\
 		fc51aee1f73c936c885f4e0f8b6b48f4f68103e3896eaddc6a45d2b71e14eace
 ''',
-     '''termux_step_make_install() {
+     '''termux_step_configure() {
+	:
+}
+
+termux_step_make() {
+	:
+}
+
+termux_step_make_install() {
 	cd $TERMUX_PKG_SRCDIR
 	cat > fortune.c << 'EOF'
 #include <dirent.h>
@@ -445,8 +456,33 @@ swap('packages/gforth/build.sh',
 swap('packages/ldc/build.sh',
      "\tmv llvm-${TERMUX_PKG_VERSION[1]}.src llvm\n",
      "\tmv llvm-${TERMUX_PKG_VERSION[1]}.src llvm\n"
-     "\t# GCC no longer resolves SmallVector::empty() through the base class.\n"
-     "\tsed -i -E 's/!([A-Za-z0-9_>-]+)\\.empty\\(\\)/\\1.size() == 0/g' llvm/include/llvm/ADT/SmallVector.h\n")
+     "\tpython3 - <<-'PY'\n"
+     "\tfrom pathlib import Path\n"
+     "\tp = Path('llvm/include/llvm/ADT/SmallVector.h')\n"
+     "\tt = p.read_text()\n"
+     "\told = '#include <cstddef>\\n'\n"
+     "\tnew = '#include <cstddef>\\n#include <cstdint>\\n'\n"
+     "\tif t.count(old) != 1:\n"
+     "\t    raise SystemExit('SmallVector cstddef include moved')\n"
+     "\tt = t.replace(old, new, 1)\n"
+     "\told = (\n"
+     "\t    'class LLVM_GSL_OWNER SmallVector : public SmallVectorImpl<T>,\\n'\n"
+     "\t    '                                   SmallVectorStorage<T, N> {\\n'\n"
+     "\t    'public:\\n'\n"
+     "\t    '  SmallVector() : SmallVectorImpl<T>(N) {}\\n'\n"
+     "\t)\n"
+     "\tnew = (\n"
+     "\t    'class LLVM_GSL_OWNER SmallVector : public SmallVectorImpl<T>,\\n'\n"
+     "\t    '                                   SmallVectorStorage<T, N> {\\n'\n"
+     "\t    'public:\\n'\n"
+     "\t    '  using SmallVectorImpl<T>::empty;\\n'\n"
+     "\t    '  using SmallVectorImpl<T>::size;\\n'\n"
+     "\t    '  SmallVector() : SmallVectorImpl<T>(N) {}\\n'\n"
+     "\t)\n"
+     "\tif t.count(old) != 1:\n"
+     "\t    raise SystemExit('SmallVector class header moved')\n"
+     "\tp.write_text(t.replace(old, new, 1))\n"
+     "\tPY\n")
 swap('packages/lzop/build.sh',
      'https://fossies.org/linux/misc/lzop-$TERMUX_PKG_VERSION.tar.xz',
      'https://www.lzop.org/download/lzop-$TERMUX_PKG_VERSION.tar.gz')
