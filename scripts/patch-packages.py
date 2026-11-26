@@ -360,6 +360,93 @@ swap('packages/icoutils/build.sh',
 swap('packages/renameutils/build.sh',
      'https://savannah.nongnu.org/download/renameutils/renameutils-$TERMUX_PKG_VERSION.tar.gz',
      'https://deb.debian.org/debian/pool/main/r/renameutils/renameutils_0.12.0.orig.tar.gz')
+swap('packages/fortune/build.sh',
+     'http://dl.fefe.de/fortune-${TERMUX_PKG_VERSION}.tar.bz2',
+     'https://deb.debian.org/debian/pool/main/f/fortune-mod/fortune-mod_1.99.1.orig.tar.gz')
+swap('packages/fortune/build.sh',
+     '''termux_step_make_install() {
+	cd $TERMUX_PKG_SRCDIR
+	$CC $CFLAGS $LDFLAGS fortune.c -o $TERMUX_PREFIX/bin/fortune
+	mkdir -p $TERMUX_PREFIX/share/man/man6
+	cp debian/fortune.6 $TERMUX_PREFIX/share/man/man6/
+
+	local TARFILE=$TERMUX_PKG_CACHEDIR/f.tar.gz
+	termux_download \\
+		http://http.debian.net/debian/pool/main/f/fortune-mod/fortune-mod_1.99.1.orig.tar.gz \\
+		$TARFILE \\
+		fc51aee1f73c936c885f4e0f8b6b48f4f68103e3896eaddc6a45d2b71e14eace
+''',
+     '''termux_step_make_install() {
+	cd $TERMUX_PKG_SRCDIR
+	cat > fortune.c << 'EOF'
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+static int wanted(const char *name) {
+	size_t n = strlen(name);
+	if (name[0] == '.') return 0;
+	if (n > 4 && strcmp(name + n - 4, ".dat") == 0) return 0;
+	if (n > 3 && strcmp(name + n - 3, ".u8") == 0) return 0;
+	return 1;
+}
+int main(void) {
+	const char *dir = getenv("FORTUNE_PATH");
+	if (!dir) dir = "@TERMUX_PREFIX@/share/games/fortunes";
+	DIR *d = opendir(dir);
+	if (!d) return 1;
+	char path[4096];
+	FILE *in = NULL;
+	long size = 0;
+	struct dirent *ent;
+	int count = 0;
+	srand((unsigned)time(NULL));
+	while ((ent = readdir(d))) {
+		if (!wanted(ent->d_name)) continue;
+		if (snprintf(path, sizeof path, "%s/%s", dir, ent->d_name) >= (int)sizeof path) continue;
+		FILE *f = fopen(path, "r");
+		if (!f) continue;
+		count++;
+		if (rand() % count == 0) {
+			if (in) fclose(in);
+			in = f;
+		} else fclose(f);
+	}
+	closedir(d);
+	if (!in) return 1;
+	char line[4096];
+	int items = 0, pick = 0;
+	while (fgets(line, sizeof line, in)) if (strcmp(line, "%\\n") == 0) items++;
+	if (items == 0) items = 1;
+	rewind(in);
+	pick = rand() % items;
+	int seen = 0, printing = pick == 0;
+	while (fgets(line, sizeof line, in)) {
+		if (strcmp(line, "%\\n") == 0) { seen++; printing = seen == pick; continue; }
+		if (printing) fputs(line, stdout);
+	}
+	fclose(in);
+	return 0;
+}
+EOF
+	sed -i "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|g" fortune.c
+	$CC $CFLAGS $LDFLAGS fortune.c -o $TERMUX_PREFIX/bin/fortune
+
+	local TARFILE=$TERMUX_PKG_CACHEDIR/f.tar.gz
+	termux_download \\
+		https://deb.debian.org/debian/pool/main/f/fortune-mod/fortune-mod_1.99.1.orig.tar.gz \\
+		$TARFILE \\
+		fc51aee1f73c936c885f4e0f8b6b48f4f68103e3896eaddc6a45d2b71e14eace
+''')
+swap('packages/gforth/build.sh',
+     '	./configure --prefix=$_PREFIX_FOR_BUILD CC="gcc -m$TERMUX_ARCH_BITS"',
+     '	./configure --prefix=$_PREFIX_FOR_BUILD CC="gcc -m$TERMUX_ARCH_BITS -std=gnu99 -fcommon -fno-strict-aliasing"')
+swap('packages/ldc/build.sh',
+     "\tmv llvm-${TERMUX_PKG_VERSION[1]}.src llvm\n",
+     "\tmv llvm-${TERMUX_PKG_VERSION[1]}.src llvm\n"
+     "\t# GCC no longer resolves SmallVector::empty() through the base class.\n"
+     "\tsed -i -E 's/!([A-Za-z0-9_>-]+)\\.empty\\(\\)/\\1.size() == 0/g' llvm/include/llvm/ADT/SmallVector.h\n")
 swap('packages/lzop/build.sh',
      'https://fossies.org/linux/misc/lzop-$TERMUX_PKG_VERSION.tar.xz',
      'https://www.lzop.org/download/lzop-$TERMUX_PKG_VERSION.tar.gz')
