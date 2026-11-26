@@ -70,11 +70,6 @@ jobs:
           restore-keys: tmod-debs-
       - name: Record restored packages
         run: find "$RUNNER_TEMP/termux-packages/output" -maxdepth 1 -name '*.deb' -printf '%f\n' > "$RUNNER_TEMP/tmod-baseline.txt" || true
-      - name: Install host autotools without sudo-rs
-        run: |
-          cd "$RUNNER_TEMP/termux-packages"
-          TERMUX_DOCKER_EXEC_EXTRA_ARGS="--user 0" ./scripts/run-docker.sh \
-            bash -lc 'export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y automake autoconf libtool && mkdir -p /system/bin && chmod 1777 /system/bin'
       - name: Build recipes
         shell: bash
         env:

@@ -316,9 +316,9 @@ new = '''		termux_setup_toolchain_gnu
 		git config --global credential.helper "" || true
 		git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" || true
 		# /usr/bin/sudo in this image is sudo-rs. It panics in
-		# src/system/audit.rs while restoring the saved uid, which
-		# aborts the recipe after toolchain setup. Host packages are
-		# installed from the workflow as container uid 0 instead.
+		# src/system/audit.rs while restoring the saved uid. apt inside
+		# the same container cannot setgroups under the builder seccomp
+		# profile, so neither sudo nor apt-get belongs in a recipe.
 		if [[ ! -e /system/bin/linker64 && -w /system/bin ]]; then
 			local linker=""
 			linker=$(find "${TERMUX_STANDALONE_TOOLCHAIN:-/nonexistent}" "$HOME/.termux-build" /opt /usr -name linker64 -type f 2>/dev/null | head -n 1 || true)
