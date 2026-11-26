@@ -1,3 +1,2 @@
 fortune
-gforth
 ldc
