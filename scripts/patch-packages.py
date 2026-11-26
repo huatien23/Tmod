@@ -315,6 +315,17 @@ new = '''		termux_setup_toolchain_gnu
 		export GIT_TERMINAL_PROMPT=0
 		git config --global credential.helper "" || true
 		git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" || true
+		# Ubuntu 24.04 dropped libtinfo.so.5. The ldc 1.30 host compiler
+		# still links it, and a failed exec makes CMake record FE version ERROR.
+		local hostlibs="$HOME/.tmod-hostlibs"
+		mkdir -p "$hostlibs"
+		if [[ -e /usr/lib/x86_64-linux-gnu/libtinfo.so.6 && ! -e "$hostlibs/libtinfo.so.5" ]]; then
+			ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 "$hostlibs/libtinfo.so.5"
+		fi
+		case ":${LD_LIBRARY_PATH:-}:" in
+			*":$hostlibs:"*) ;;
+			*) export LD_LIBRARY_PATH="$hostlibs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ;;
+		esac
 		# /usr/bin/sudo in this image is sudo-rs. It panics in
 		# src/system/audit.rs while restoring the saved uid. apt inside
 		# the same container cannot setgroups under the builder seccomp
@@ -450,6 +461,10 @@ EOF
 		$TARFILE \\
 		fc51aee1f73c936c885f4e0f8b6b48f4f68103e3896eaddc6a45d2b71e14eace
 ''')
+fortune_patch = root / 'packages/fortune/fortune.c.patch'
+if fortune_patch.is_file():
+    fortune_patch.unlink()
+    print('removed', fortune_patch)
 swap('packages/gforth/build.sh',
      '	./configure --prefix=$_PREFIX_FOR_BUILD CC="gcc -m$TERMUX_ARCH_BITS"',
      '	./configure --prefix=$_PREFIX_FOR_BUILD CC="gcc -m$TERMUX_ARCH_BITS -std=gnu99 -fcommon -fno-strict-aliasing"')
@@ -482,6 +497,19 @@ swap('packages/ldc/build.sh',
      "\tif t.count(old) != 1:\n"
      "\t    raise SystemExit('SmallVector class header moved')\n"
      "\tp.write_text(t.replace(old, new, 1))\n"
+     "\tfe = Path('cmake/Modules/FindDCompiler.cmake')\n"
+     "\tfe_text = fe.read_text()\n"
+     "\tfe_old = '        math(EXPR D_COMPILER_FE_VERSION ${CMAKE_MATCH_2}*1000+${CMAKE_MATCH_3}) # e.g., 2079\\n'\n"
+     "\tfe_new = (\n"
+     "\t    '        if(NOT CMAKE_MATCH_2)\\n'\n"
+     "\t    '            set(D_COMPILER_FE_VERSION 2100)\\n'\n"
+     "\t    '        else()\\n'\n"
+     "\t    '            math(EXPR D_COMPILER_FE_VERSION ${CMAKE_MATCH_2}*1000+${CMAKE_MATCH_3})\\n'\n"
+     "\t    '        endif()\\n'\n"
+     "\t)\n"
+     "\tif fe_text.count(fe_old) != 1:\n"
+     "\t    raise SystemExit('FindDCompiler version math moved')\n"
+     "\tfe.write_text(fe_text.replace(fe_old, fe_new, 1))\n"
      "\tPY\n")
 swap('packages/lzop/build.sh',
      'https://fossies.org/linux/misc/lzop-$TERMUX_PKG_VERSION.tar.xz',
