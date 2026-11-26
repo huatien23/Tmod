@@ -262,8 +262,18 @@ new = '''	elif [[ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
 			SECOND=$(sha256sum "$TMPFILE" | cut -d' ' -f1)
 		fi
 		if [[ -n "$SECOND" && "$SECOND" == "$ACTUAL_CHECKSUM" ]]; then
-			printf "Tmod: source is stable and the recipe checksum is stale. Accepting %s\\n" \\
-				"$ACTUAL_CHECKSUM" 1>&2
+			local sig
+			sig=$(od -An -tx1 -N4 "$TMPFILE" | tr -d ' ')
+			case "$sig" in
+				1f8b08*|425a68*|fd377a*|504b0304*)
+					printf "Tmod: source is stable and the recipe checksum is stale. Accepting %s\\n" \\
+						"$ACTUAL_CHECKSUM" 1>&2
+					;;
+				*)
+					printf "Tmod: stable payload is not an archive (%s)\\n" "$sig" 1>&2
+					return 1
+					;;
+			esac
 		else
 			return 1
 		fi
@@ -302,6 +312,9 @@ new = '''		termux_setup_toolchain_gnu
 		chmod 755 "$wrap/aarch64-linux-android-clang" "$wrap/aarch64-linux-android-clang++"
 		export PATH="$wrap:$PATH"
 		export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android${api}-clang"
+		export GIT_TERMINAL_PROMPT=0
+		git config --global credential.helper "" || true
+		git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" || true
 		if [[ ! -e /system/bin/linker64 ]]; then
 			local linker=""
 			linker=$(find "${TERMUX_STANDALONE_TOOLCHAIN:-/nonexistent}" "$HOME/.termux-build" /opt /usr -name linker64 -type f 2>/dev/null | head -n 1 || true)
@@ -341,6 +354,12 @@ swap('packages/libgfshare/build.sh',
 swap('packages/lrzsz/build.sh',
      'https://github.com/UweOhse/lrzsz/archive/$_COMMIT.tar.gz',
      'https://deb.debian.org/debian/pool/main/l/lrzsz/lrzsz_0.12.21rc.orig.tar.gz')
+swap('packages/icoutils/build.sh',
+     'https://savannah.nongnu.org/download/icoutils/icoutils-$TERMUX_PKG_VERSION.tar.bz2',
+     'https://deb.debian.org/debian/pool/main/i/icoutils/icoutils_0.32.3.orig.tar.bz2')
+swap('packages/renameutils/build.sh',
+     'https://savannah.nongnu.org/download/renameutils/renameutils-$TERMUX_PKG_VERSION.tar.gz',
+     'https://deb.debian.org/debian/pool/main/r/renameutils/renameutils_0.12.0.orig.tar.gz')
 swap('packages/lzop/build.sh',
      'https://fossies.org/linux/misc/lzop-$TERMUX_PKG_VERSION.tar.xz',
      'https://www.lzop.org/download/lzop-$TERMUX_PKG_VERSION.tar.gz')
@@ -363,7 +382,7 @@ swap('packages/netcdf-c/build.sh',
      '\tfind . -name Makefile -exec sed -i \'s/-std=gnu2[3-9]/-std=gnu17/g; s/-std=c2[3-9]/-std=gnu17/g\' {} +\n}')
 swap('packages/python2/build.sh',
      'termux_step_pre_configure() {\n\t# Put the host-built python in path:',
-     'termux_step_pre_configure() {\n\tCFLAGS+=" -std=gnu11"\n\t# Put the host-built python in path:')
+     'termux_step_pre_configure() {\n\texport CC="$CC -std=gnu11"\n\tCFLAGS+=" -std=gnu11"\n\t# Put the host-built python in path:')
 swap('packages/libetonyek/build.sh',
      'termux_step_pre_configure() {\n',
      'termux_step_pre_configure() {\n\ttermux_tmod_ensure_mdds3\n')
