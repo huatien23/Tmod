@@ -322,6 +322,19 @@ new = '''		termux_setup_toolchain_gnu
 		if [[ -e /usr/lib/x86_64-linux-gnu/libtinfo.so.6 && ! -e "$hostlibs/libtinfo.so.5" ]]; then
 			ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 "$hostlibs/libtinfo.so.5"
 		fi
+		# ldc 1.30's host ldc2 needs libxml2.so.2. This image only has a newer soname.
+		if [[ ! -e /usr/lib/x86_64-linux-gnu/libxml2.so.2 && ! -e "$hostlibs/libxml2.so.2" ]]; then
+			local xmltmp
+			xmltmp=$(mktemp -d)
+			curl -fsSL -o "$xmltmp/libxml2.deb" https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.9.14+dfsg-1.3~deb12u6_amd64.deb
+			curl -fsSL -o "$xmltmp/icu.deb" https://deb.debian.org/debian/pool/main/i/icu/libicu72_72.1-3+deb12u1_amd64.deb
+			dpkg-deb -x "$xmltmp/libxml2.deb" "$xmltmp/xml"
+			dpkg-deb -x "$xmltmp/icu.deb" "$xmltmp/icu"
+			cp -a "$xmltmp"/xml/usr/lib/x86_64-linux-gnu/libxml2.so.2* "$hostlibs/"
+			cp -a "$xmltmp"/icu/usr/lib/x86_64-linux-gnu/libicuuc.so.72* "$hostlibs/"
+			cp -a "$xmltmp"/icu/usr/lib/x86_64-linux-gnu/libicudata.so.72* "$hostlibs/"
+			rm -rf "$xmltmp"
+		fi
 		case ":${LD_LIBRARY_PATH:-}:" in
 			*":$hostlibs:"*) ;;
 			*) export LD_LIBRARY_PATH="$hostlibs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ;;
