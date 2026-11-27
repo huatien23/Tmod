@@ -70,7 +70,7 @@ jobs:
           bash scripts/prepare-apt-repo.sh "$RUNNER_TEMP/termux-packages" "$RUNNER_TEMP/termux-packages/output/bootstrap-aarch64.zip" "$RUNNER_TEMP/tmod-site"
           cp "$RUNNER_TEMP/termux-packages/output/bootstrap-aarch64.zip" app/src/main/cpp/bootstrap-aarch64.zip
       - name: Upload Tmod package repository
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ runner.temp }}/tmod-site
       - name: Build arm64 APK
