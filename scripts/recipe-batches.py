@@ -25,4 +25,4 @@ elif len(sys.argv) > 2 and sys.argv[1] == '--file':
     recipes = sorted(set(Path(sys.argv[2]).read_text().split()) & available)
 else:
     recipes = sorted(available)
-print(json.dumps([' '.join(recipes[i:i + 10]) for i in range(0, len(recipes), 10)]))
+print(json.dumps([' '.join(recipes[i:i + 1]) for i in range(0, len(recipes), 1)]))

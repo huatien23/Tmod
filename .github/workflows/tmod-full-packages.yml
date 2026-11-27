@@ -40,7 +40,7 @@ jobs:
     needs: enumerate
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 20
       matrix:
         packages: ${{ fromJson(needs.enumerate.outputs.batches) }}
     runs-on: ubuntu-24.04
@@ -74,7 +74,7 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/termux-packages"
           TERMUX_DOCKER_EXEC_EXTRA_ARGS="--user 0" ./scripts/run-docker.sh \
-            bash -lc 'mkdir -p /system/bin && chmod 1777 /system/bin'
+            bash -lc 'if [ ! -d /system ]; then rm -f /system; fi; mkdir -p /system/bin; chmod 1777 /system/bin; ls -ld /system /system/bin' || true
       - name: Build recipes
         shell: bash
         env:
