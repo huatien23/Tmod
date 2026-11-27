@@ -20,7 +20,7 @@ jobs:
     outputs:
       batches: ${{ steps.recipes.outputs.batches }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: recipes
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -48,7 +48,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare package recipes
         env:
           GITHUB_TOKEN: ${{ github.token }}
