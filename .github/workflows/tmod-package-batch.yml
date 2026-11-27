@@ -30,7 +30,7 @@ jobs:
           python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
           python3 scripts/cache-release-assets.py "$RUNNER_TEMP/termux-packages"
       - name: Restore previously built packages
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-debs-${{ github.run_id }}
@@ -62,7 +62,7 @@ jobs:
         run: python3 scripts/publish-package-batch.py "$RUNNER_TEMP/termux-packages/output"
       - name: Save package cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-debs-${{ github.run_id }}

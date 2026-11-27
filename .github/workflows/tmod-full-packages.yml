@@ -63,7 +63,7 @@ jobs:
           test -f "$RUNNER_TEMP/termux-packages/scripts/properties.sh"
           python3 scripts/patch-packages.py "$RUNNER_TEMP/termux-packages"
           python3 scripts/cache-release-assets.py "$RUNNER_TEMP/termux-packages"
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/termux-packages/output
           key: tmod-debs-${{ github.run_id }}-${{ strategy.job-index }}
@@ -105,7 +105,7 @@ jobs:
           TMOD_RELEASE_PREFIX: tmod-retry-${{ github.run_id }}-${{ strategy.job-index }}
           TMOD_BASELINE_FILE: ${{ runner.temp }}/tmod-baseline.txt
         run: python3 scripts/publish-package-batch.py "$RUNNER_TEMP/termux-packages/output"
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: always()
         with:
           path: ${{ runner.temp }}/termux-packages/output
