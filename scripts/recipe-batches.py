@@ -25,4 +25,10 @@ elif len(sys.argv) > 2 and sys.argv[1] == '--file':
     recipes = sorted(set(Path(sys.argv[2]).read_text().split()) & available)
 else:
     recipes = sorted(available)
-print(json.dumps([' '.join(recipes[i:i + 1]) for i in range(0, len(recipes), 1)]))
+# GitHub Actions limits a matrix to 256 combinations.  The current Termux
+# tree contains more than two thousand recipes, so group ten recipes per job.
+# The package workflow already loops over every name in each matrix entry and
+# records failures separately for the continuation workflow.
+recipes_per_job = 10
+print(json.dumps([' '.join(recipes[i:i + recipes_per_job])
+                  for i in range(0, len(recipes), recipes_per_job)]))
